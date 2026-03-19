@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GiftGroove &mdash; Sign Up</title>
+
+<!-- Supabase JavaScript library -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --white:#FFFFFF; --off-white:#F9F9F7; --gray-50:#F4F4F2; --gray-400:#9E9E96;
+    --gray-600:#6B6B64; --gray-900:#1C1C1A; --red:#C0392B; --red-pale:#FDECEA;
+    --green:#2D6A4F; --green-mid:#3A8B65; --green-pale:#EAF4EF;
+    --gold:#D4941A; --border:#E8E8E4;
+    --sans:Arial,Helvetica,sans-serif; --serif:Georgia,'Times New Roman',serif;
+  }
+  body { background:var(--off-white); color:var(--gray-900); font-family:var(--sans); font-size:14px; line-height:1.5; margin:0; min-height:100vh; }
+  .page { min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:40px 16px; background:var(--off-white); }
+  .brand { display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:24px; }
+  .gg-icon-auth { width:52px; height:52px; border-radius:14px; margin:0 auto 8px; background:linear-gradient(135deg,#C0392B 0%,#D4941A 100%); display:flex; align-items:center; justify-content:center; font-family:Arial,sans-serif; font-size:18px; font-weight:bold; color:#fff; letter-spacing:-1px; user-select:none; }
+  .brand-name { font-family:Arial,sans-serif; font-weight:bold; color:#C0392B; font-size:22px; }
+  .brand-tag { font-size:12px; color:var(--gray-400); letter-spacing:0.06em; text-transform:uppercase; }
+  .card { width:100%; max-width:440px; background:var(--white); border:1px solid var(--border); border-radius:16px; padding:32px; box-shadow:0 2px 16px rgba(0,0,0,0.06); }
+  .card-title { font-family:var(--serif); font-size:22px; font-style:italic; color:var(--gray-900); margin-bottom:6px; }
+  .card-sub { font-size:13px; color:var(--gray-400); margin-bottom:24px; }
+  .field { display:flex; flex-direction:column; gap:5px; margin-bottom:16px; }
+  .field-label { font-size:11px; font-weight:bold; letter-spacing:0.1em; text-transform:uppercase; color:var(--gray-400); }
+  .req { color:var(--red); margin-left:2px; }
+  .f-input { padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--gray-50); font-family:var(--sans); font-size:13px; color:var(--gray-900); outline:none; width:100%; transition:border-color 0.15s,background 0.15s; }
+  .f-input:focus { border-color:var(--green-mid); background:var(--white); }
+  .f-input::placeholder { color:var(--gray-400); }
+  .f-input.invalid { border-color:var(--red); }
+  .field-hint { font-size:10px; color:var(--gray-400); margin-top:2px; }
+  .pw-toggle-btn { align-self:flex-start; background:none; border:none; padding:0; font-family:var(--sans); font-size:10px; color:var(--gray-400); cursor:pointer; margin-top:4px; }
+  .pw-toggle-btn:hover { color:var(--green-mid); }
+
+  /* Password strength meter */
+  .pw-strength { margin-top:6px; }
+  .pw-strength-bar { height:3px; border-radius:2px; background:var(--border); overflow:hidden; margin-bottom:4px; }
+  .pw-strength-fill { height:100%; border-radius:2px; width:0%; transition:width 0.3s,background 0.3s; background:var(--gray-400); }
+  .pw-strength-label { font-size:10px; color:var(--gray-400); }
+
+  /* Checkboxes */
+  .checkbox-group { display:flex; flex-direction:column; gap:12px; margin-top:20px; margin-bottom:24px; }
+  .checkbox-row { display:flex; align-items:flex-start; gap:10px; }
+  .cb-input { width:16px; height:16px; min-width:16px; accent-color:var(--green); cursor:pointer; margin-top:1px; }
+  .cb-label { font-size:12px; color:var(--gray-600); line-height:1.5; cursor:pointer; }
+  .cb-link { color:var(--green); text-decoration:underline; cursor:pointer; }
+  .cb-optional { font-size:10px; color:var(--gray-400); margin-left:4px; }
+
+  /* Messages */
+  .msg-banner { display:none; align-items:center; gap:10px; padding:11px 14px; border-radius:8px; font-size:12px; margin-bottom:16px; line-height:1.5; }
+  .msg-banner.visible { display:flex; }
+  .msg-banner.error { background:var(--red-pale); border:1px solid var(--red); color:var(--red); }
+  .msg-banner.success { background:var(--green-pale); border:1px solid var(--green-mid); color:var(--green); }
+
+  /* Buttons */
+  .submit-btn { width:100%; padding:13px; border:none; border-radius:8px; background:var(--green); color:#fff; font-family:var(--sans); font-size:14px; font-weight:bold; cursor:pointer; letter-spacing:0.03em; transition:background 0.15s; margin-bottom:20px; }
+  .submit-btn:hover:not(:disabled) { background:var(--green-mid); }
+  .submit-btn:disabled { opacity:0.7; cursor:not-allowed; }
+  .or-divider { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+  .or-line { flex:1; height:1px; background:var(--border); }
+  .or-text { font-size:11px; color:var(--gray-400); white-space:nowrap; }
+  .social-btn { width:100%; padding:11px; border:1px solid var(--border); border-radius:8px; background:var(--white); font-family:var(--sans); font-size:13px; color:var(--gray-600); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:10px; transition:border-color 0.15s,background 0.15s; }
+  .social-btn:hover { border-color:var(--gray-400); background:var(--gray-50); }
+  .social-icon { font-size:16px; }
+  .card-footer { text-align:center; font-size:13px; color:var(--gray-400); margin-top:4px; }
+  .card-footer a { color:var(--green); text-decoration:none; font-weight:bold; }
+  .card-footer a:hover { text-decoration:underline; }
+  .below-card { margin-top:20px; text-align:center; font-size:11px; color:var(--gray-400); max-width:440px; line-height:1.6; }
+  .spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.4); border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite; margin-right:8px; vertical-align:middle; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* Confirmation screen - shown after successful signup */
+  .confirm-screen { display:none; flex-direction:column; align-items:center; text-align:center; padding:40px 20px; gap:16px; }
+  .confirm-screen.visible { display:flex; }
+  .confirm-icon { font-size:48px; }
+  .confirm-title { font-family:var(--serif); font-size:22px; font-style:italic; color:var(--gray-900); }
+  .confirm-sub { font-size:14px; color:var(--gray-600); max-width:320px; line-height:1.6; }
+  .confirm-email { font-weight:bold; color:var(--green); }
+  .confirm-note { font-size:12px; color:var(--gray-400); }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="brand">
+    <div class="gg-icon-auth">GG</div>
+    <div class="brand-name">GiftGroove</div>
+    <div class="brand-tag">Smart Gift Finder</div>
+  </div>
+
+  <!-- ── Sign up card ── -->
+  <div class="card" id="signup-card">
+    <div class="card-title">Create your account</div>
+    <div class="card-sub">Start remembering what matters &mdash; for free.</div>
+
+    <!-- Error / success messages -->
+    <div class="msg-banner error" id="error-banner">
+      <span>&#10005;</span>
+      <span id="error-text">Something went wrong. Please try again.</span>
+    </div>
+
+    <!-- Full name -->
+    <div class="field">
+      <div class="field-label">Full name <span class="req">*</span></div>
+      <input class="f-input" type="text" id="name-input" placeholder="e.g. Jamie Reynolds" />
+    </div>
+
+    <!-- Email -->
+    <div class="field">
+      <div class="field-label">Email address <span class="req">*</span></div>
+      <input class="f-input" type="email" id="email-input" placeholder="you@email.com" />
+    </div>
+
+    <!-- Phone (optional) -->
+    <div class="field">
+      <div class="field-label">Phone number</div>
+      <input class="f-input" type="tel" id="phone-input" placeholder="(000) 000-0000" />
+      <div class="field-hint">Used for SMS reminders if you enable them in Settings</div>
+    </div>
+
+    <!-- Password -->
+    <div class="field">
+      <div class="field-label">Password <span class="req">*</span></div>
+      <input class="f-input" type="password" id="password-input" placeholder="Min. 8 characters" oninput="checkStrength(this.value)" />
+      <button class="pw-toggle-btn" onclick="togglePw('password-input', this)">Show password</button>
+      <div class="pw-strength">
+        <div class="pw-strength-bar"><div class="pw-strength-fill" id="strength-fill"></div></div>
+        <div class="pw-strength-label" id="strength-label"></div>
+      </div>
+    </div>
+
+    <!-- Confirm password -->
+    <div class="field">
+      <div class="field-label">Confirm password <span class="req">*</span></div>
+      <input class="f-input" type="password" id="confirm-input" placeholder="Re-enter your password" />
+      <button class="pw-toggle-btn" onclick="togglePw('confirm-input', this)">Show password</button>
+    </div>
+
+    <!-- Checkboxes -->
+    <div class="checkbox-group">
+      <div class="checkbox-row">
+        <input type="checkbox" class="cb-input" id="cb-terms" />
+        <label class="cb-label" for="cb-terms">
+          I agree to the <span class="cb-link">Terms of Service</span> and <span class="cb-link">Privacy Policy</span> <span class="req">*</span>
+        </label>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" class="cb-input" id="cb-marketing" />
+        <label class="cb-label" for="cb-marketing">
+          Send me helpful tips and gift ideas by email <span class="cb-optional">(optional)</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <button class="submit-btn" id="signup-btn" onclick="handleSignup()">Create free account</button>
+
+    <div class="or-divider">
+      <div class="or-line"></div>
+      <div class="or-text">or sign up with</div>
+      <div class="or-line"></div>
+    </div>
+
+    <button class="social-btn" onclick="handleGoogleSignup()">
+      <span class="social-icon">G</span> Continue with Google
+    </button>
+
+    <div class="card-footer">
+      Already have an account? <a href="07_login.html">Log in</a>
+    </div>
+  </div>
+
+  <!-- ── Confirmation screen (shown after successful signup) ── -->
+  <div class="card" id="confirm-card" style="display:none; max-width:440px;">
+    <div class="confirm-screen visible">
+      <div class="confirm-icon">&#9993;</div>
+      <div class="confirm-title">Check your email</div>
+      <div class="confirm-sub">
+        We sent a confirmation link to<br>
+        <span class="confirm-email" id="confirm-email-display"></span>
+      </div>
+      <div class="confirm-note">
+        Click the link in that email to activate your account.<br>
+        After confirming, you can <a href="07_login.html" style="color:var(--green);">log in here</a>.
+      </div>
+      <div class="confirm-note" style="margin-top:8px;">
+        Don't see it? Check your spam folder.
+      </div>
+    </div>
+  </div>
+
+  <div class="below-card">
+    Links to Amazon products earn a small commission at no extra cost to you.
+    Your data is never sold or shared with third parties.
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────
+// SUPABASE CONNECTION
+// ─────────────────────────────────────────────────────────
+const SUPABASE_URL      = 'https://xaglxbzeexlumisozmdb.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhhZ2x4YnplZXhsdW1pc296bWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NzIyNDAsImV4cCI6MjA4OTQ0ODI0MH0.2Umu3Vm3-XTTnOv0_iORow0QUDCTEU2e56lAN_4j0Aw';
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ─────────────────────────────────────────────────────────
+// AUTO-REDIRECT: If already logged in, skip to dashboard
+// ─────────────────────────────────────────────────────────
+sb.auth.getSession().then(({ data: { session } }) => {
+  if (session) {
+    window.location.href = '01_dashboard.html';
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// SIGN UP WITH EMAIL AND PASSWORD
+// ─────────────────────────────────────────────────────────
+async function handleSignup() {
+  const name     = document.getElementById('name-input').value.trim();
+  const email    = document.getElementById('email-input').value.trim();
+  const phone    = document.getElementById('phone-input').value.trim();
+  const password = document.getElementById('password-input').value;
+  const confirm  = document.getElementById('confirm-input').value;
+  const terms    = document.getElementById('cb-terms').checked;
+  const btn      = document.getElementById('signup-btn');
+
+  // ── Validation ──
+  if (!name) {
+    showError('Please enter your full name.'); return;
+  }
+  if (!email || !email.includes('@')) {
+    showError('Please enter a valid email address.'); return;
+  }
+  if (password.length < 8) {
+    showError('Your password must be at least 8 characters.'); return;
+  }
+  if (password !== confirm) {
+    showError('Passwords do not match. Please check and try again.'); return;
+  }
+  if (!terms) {
+    showError('Please agree to the Terms of Service to continue.'); return;
+  }
+
+  // ── Show loading state ──
+  btn.disabled    = true;
+  btn.innerHTML   = '<span class="spinner"></span>Creating your account...';
+  hideError();
+
+  // ── Create account in Supabase ──
+  // The 'data' option passes extra info (name, phone) to store alongside the account
+  const { data, error } = await sb.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        full_name: name,
+        phone:     phone || null,
+      }
+    }
+  });
+
+  if (error) {
+    btn.disabled  = false;
+    btn.innerHTML = 'Create free account';
+    showError(getFriendlyError(error.message));
+    return;
+  }
+
+  // ── Success: show confirmation screen ──
+  // Supabase sends a confirmation email automatically
+  // User needs to click the link before they can log in
+  document.getElementById('signup-card').style.display  = 'none';
+  document.getElementById('confirm-card').style.display = 'block';
+  document.getElementById('confirm-email-display').textContent = email;
+}
+
+// ─────────────────────────────────────────────────────────
+// SIGN UP WITH GOOGLE
+// ─────────────────────────────────────────────────────────
+async function handleGoogleSignup() {
+  hideError();
+
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin + '/01_dashboard.html'
+    }
+  });
+
+  if (error) {
+    showError('Could not connect to Google. Please try again.');
+  }
+  // If successful Supabase redirects to Google automatically
+}
+
+// ─────────────────────────────────────────────────────────
+// PASSWORD STRENGTH METER
+// ─────────────────────────────────────────────────────────
+function checkStrength(val) {
+  const fill  = document.getElementById('strength-fill');
+  const label = document.getElementById('strength-label');
+  if (!fill || !label) return;
+
+  let score = 0;
+  if (val.length >= 8)           score++; // Long enough
+  if (/[A-Z]/.test(val))         score++; // Has uppercase
+  if (/[0-9]/.test(val))         score++; // Has number
+  if (/[^A-Za-z0-9]/.test(val)) score++; // Has special character
+
+  const levels = [
+    { w:'0%',   bg:'var(--border)',    txt:'' },
+    { w:'25%',  bg:'var(--red)',       txt:'Weak' },
+    { w:'50%',  bg:'var(--gold)',      txt:'Fair' },
+    { w:'75%',  bg:'var(--gold)',      txt:'Good' },
+    { w:'100%', bg:'var(--green-mid)', txt:'Strong' },
+  ];
+
+  const l = val.length === 0 ? levels[0] : levels[Math.min(score, 4)];
+  fill.style.width      = l.w;
+  fill.style.background = l.bg;
+  label.textContent     = l.txt;
+  label.style.color     = l.bg;
+}
+
+// ─────────────────────────────────────────────────────────
+// HELPER FUNCTIONS
+// ─────────────────────────────────────────────────────────
+function togglePw(id, btn) {
+  const input = document.getElementById(id);
+  const show  = input.type === 'password';
+  input.type  = show ? 'text' : 'password';
+  btn.textContent = show ? 'Hide password' : 'Show password';
+}
+
+function showError(msg) {
+  document.getElementById('error-text').textContent = msg;
+  document.getElementById('error-banner').classList.add('visible');
+}
+
+function hideError() {
+  document.getElementById('error-banner').classList.remove('visible');
+}
+
+function getFriendlyError(msg) {
+  if (msg.includes('already registered'))   return 'An account with that email already exists. Try logging in instead.';
+  if (msg.includes('invalid email'))        return 'Please enter a valid email address.';
+  if (msg.includes('Password should be'))   return 'Your password must be at least 8 characters.';
+  if (msg.includes('Too many requests'))    return 'Too many attempts. Please wait a minute and try again.';
+  return 'Something went wrong creating your account. Please try again.';
+}
+</script>
+
+</body>
+</html>
