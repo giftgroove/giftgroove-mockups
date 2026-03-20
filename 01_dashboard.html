@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GiftGroove &mdash; Dashboard</title>
+
+<!-- Supabase JavaScript library -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --white:#FFFFFF; --off-white:#F9F9F7; --gray-50:#F4F4F2; --gray-400:#9E9E96;
+    --gray-600:#6B6B64; --gray-900:#1C1C1A; --red:#C0392B; --red-pale:#FDECEA;
+    --green:#2D6A4F; --green-mid:#3A8B65; --green-pale:#EAF4EF;
+    --gold:#D4941A; --gold-pale:#FEF7E6; --border:#E8E8E4;
+    --sans:Arial,Helvetica,sans-serif; --serif:Georgia,'Times New Roman',serif;
+  }
+  body { background:var(--off-white); color:var(--gray-900); font-family:var(--sans); font-size:14px; line-height:1.5; margin:0; }
+
+  /* ── Icons ── */
+  .gg-icon { width:38px; height:38px; border-radius:10px; flex-shrink:0; background:linear-gradient(135deg,#C0392B 0%,#D4941A 100%); display:flex; align-items:center; justify-content:center; font-family:Arial,sans-serif; font-size:13px; font-weight:bold; color:#fff; letter-spacing:-1px; user-select:none; }
+  .gg-icon-sm { width:30px; height:30px; border-radius:8px; flex-shrink:0; background:linear-gradient(135deg,#C0392B 0%,#D4941A 100%); display:flex; align-items:center; justify-content:center; font-family:Arial,sans-serif; font-size:11px; font-weight:bold; color:#fff; letter-spacing:-1px; user-select:none; }
+
+  /* ── Layout ── */
+  .desk-app { display:flex; height:100vh; overflow:hidden; }
+  .sidebar { width:210px; min-width:210px; height:100%; background:var(--white); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; overflow-y:auto; }
+  .logo { padding:18px 20px 16px; border-bottom:1px solid var(--border); flex-shrink:0; }
+  .logo-wrap { display:flex; align-items:center; gap:10px; }
+  .logo-name { font-family:var(--sans); font-size:17px; font-weight:bold; color:var(--red); letter-spacing:-0.01em; line-height:1.1; }
+  .logo-tag { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gray-400); margin-top:2px; }
+  .nav { flex:1; padding:16px 0; }
+  .nav-sec { font-size:9px; font-weight:bold; letter-spacing:0.18em; text-transform:uppercase; color:var(--gray-400); padding:0 20px; margin:14px 0 4px; }
+  .nav-item { text-decoration:none; display:flex; align-items:center; gap:10px; padding:10px 20px; font-size:13px; color:var(--gray-600); cursor:pointer; border-left:3px solid transparent; transition:all 0.15s; }
+  .nav-item:hover { color:var(--gray-900); background:var(--gray-50); }
+  .nav-item.active { color:var(--green); background:var(--green-pale); border-left-color:var(--green); font-weight:bold; }
+  .nbadge { margin-left:auto; background:var(--red); color:#fff; font-size:10px; font-weight:bold; padding:1px 6px; border-radius:10px; }
+  .sid-foot { padding:16px 20px 20px; border-top:1px solid var(--border); flex-shrink:0; }
+  .uchip { display:flex; align-items:center; gap:9px; }
+  .uavatar { width:32px; height:32px; border-radius:50%; background:var(--gold-pale); border:2px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:bold; color:var(--gold); flex-shrink:0; }
+  .uname { font-size:12px; font-weight:bold; }
+  .uplan { font-size:10px; color:var(--gray-400); }
+  .logout-btn { margin-top:10px; width:100%; padding:7px; border:1px solid var(--border); border-radius:7px; background:transparent; font-family:var(--sans); font-size:11px; color:var(--gray-400); cursor:pointer; transition:all 0.15s; }
+  .logout-btn:hover { border-color:var(--red); color:var(--red); background:var(--red-pale); }
+
+  .main { flex:1; min-width:0; height:100%; overflow-y:auto; background:var(--off-white); display:flex; flex-direction:column; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; border-bottom:1px solid var(--border); background:var(--white); flex-shrink:0; position:sticky; top:0; z-index:10; }
+  .pg-title { font-family:var(--serif); font-size:22px; font-style:italic; color:var(--gray-900); }
+  .topbar-date { font-size:13px; color:var(--gray-400); }
+  .content { padding:24px 24px 48px; flex:1; }
+
+  /* ── Banner ── */
+  .banner { background:var(--green); border-radius:12px; padding:22px 28px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+  .banner-text h2 { font-family:var(--serif); font-size:20px; font-style:italic; color:#fff; margin-bottom:4px; }
+  .banner-text p { font-size:13px; color:rgba(255,255,255,0.85); }
+  .banner-btn { padding:10px 22px; background:var(--gold); color:#fff; border:none; border-radius:8px; font-family:var(--sans); font-size:13px; font-weight:bold; cursor:pointer; white-space:nowrap; text-decoration:none; }
+  .banner-btn:hover { opacity:0.9; }
+
+  /* ── Stats ── */
+  .section-label { font-family:var(--serif); font-size:15px; font-style:italic; color:var(--gray-600); margin-bottom:12px; }
+  .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:28px; }
+  .stat-card { background:var(--white); border:1px solid var(--border); border-radius:10px; padding:18px 20px; }
+  .stat-num { font-family:var(--serif); font-size:32px; font-style:italic; color:var(--gray-900); line-height:1; }
+  .stat-label { font-size:12px; color:var(--gray-400); margin-top:5px; }
+  .stat-sub { font-size:11px; color:var(--green); margin-top:6px; font-weight:bold; }
+
+  /* ── Cards ── */
+  .two-col-layout { display:grid; grid-template-columns:280px 1fr; gap:16px; margin-bottom:16px; }
+  .card { background:var(--white); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:16px; }
+  .card-head { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid var(--border); }
+  .card-title { font-family:var(--serif); font-size:15px; font-style:italic; color:var(--gray-900); }
+  .card-link { font-size:12px; color:var(--green); cursor:pointer; font-weight:bold; text-decoration:none; }
+
+  /* ── Occasions list ── */
+  .occ-list { padding:0 20px 8px; }
+  .occ-row { display:flex; align-items:center; gap:14px; padding:11px 0; border-bottom:1px solid var(--border); }
+  .occ-row:last-child { border-bottom:none; }
+  .occ-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .dot-urgent { background:var(--red); }
+  .dot-soon   { background:var(--gold); }
+  .dot-later  { background:var(--green-mid); }
+  .dot-far    { background:var(--gray-400); }
+  .occ-info { flex:1; min-width:0; }
+  .occ-name { font-size:13px; font-weight:bold; color:var(--gray-900); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .occ-detail { font-size:11px; color:var(--gray-400); margin-top:1px; }
+  .occ-days { font-size:11px; font-weight:bold; white-space:nowrap; flex-shrink:0; min-width:60px; text-align:right; }
+  .days-urgent { color:var(--red); }
+  .days-soon   { color:var(--gold); }
+  .days-later  { color:var(--green); }
+  .days-far    { color:var(--gray-400); }
+  .occ-gift-btn { padding:5px 12px; background:var(--gold-pale); border:1px solid var(--gold); border-radius:6px; font-family:var(--sans); font-size:10px; font-weight:bold; color:var(--gold); cursor:pointer; white-space:nowrap; flex-shrink:0; text-decoration:none; }
+  .occ-gift-btn:hover { background:var(--gold); color:#fff; }
+
+  /* ── Quick actions ── */
+  .qa-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:12px 16px 16px; }
+  .qa-btn { display:flex; flex-direction:column; align-items:flex-start; gap:4px; padding:11px 12px; border:1px solid var(--border); border-radius:8px; background:var(--off-white); cursor:pointer; transition:all 0.15s; text-align:left; font-family:var(--sans); width:100%; text-decoration:none; }
+  .qa-btn:hover { background:var(--green-pale); border-color:var(--green-mid); }
+  .qa-icon { font-size:16px; }
+  .qa-title { font-size:12px; font-weight:bold; color:var(--gray-900); }
+  .qa-sub { font-size:10px; color:var(--gray-400); line-height:1.3; }
+
+  /* ── Empty / loading states ── */
+  .empty-occ { padding:24px 20px; text-align:center; color:var(--gray-400); font-size:13px; font-family:var(--serif); font-style:italic; }
+  .skeleton { background:linear-gradient(90deg,var(--gray-50) 25%,var(--border) 50%,var(--gray-50) 75%); background-size:200% 100%; animation:shimmer 1.2s infinite; border-radius:6px; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .skel-row { height:14px; margin:6px 0; }
+  .skel-num { height:32px; width:60px; margin-bottom:8px; }
+
+  /* ── Mobile ── */
+  .mob-app { display:none; flex-direction:column; height:100vh; overflow:hidden; }
+  .mob-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--white); border-bottom:1px solid var(--border); flex-shrink:0; }
+  .mob-brand { display:flex; align-items:center; gap:8px; }
+  .mob-app-name { font-family:var(--sans); font-size:15px; font-weight:bold; color:var(--red); }
+  .mob-greeting { font-family:var(--serif); font-size:14px; font-style:italic; color:var(--gray-600); }
+  .mob-scroll { flex:1; overflow-y:auto; padding:14px 14px 80px; background:var(--off-white); }
+  .mob-banner { background:var(--green); border-radius:10px; padding:16px; margin-bottom:16px; }
+  .mob-banner h3 { font-family:var(--serif); font-size:16px; font-style:italic; color:#fff; margin-bottom:4px; }
+  .mob-banner p { font-size:12px; color:rgba(255,255,255,0.85); margin-bottom:12px; }
+  .mob-banner-btn { padding:9px 18px; background:var(--gold); color:#fff; border:none; border-radius:7px; font-family:var(--sans); font-size:12px; font-weight:bold; cursor:pointer; text-decoration:none; display:inline-block; }
+  .mob-sec-label { font-family:var(--serif); font-size:14px; font-style:italic; color:var(--gray-600); margin:14px 0 8px; }
+  .mob-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:4px; }
+  .mob-stat { background:var(--white); border:1px solid var(--border); border-radius:8px; padding:12px 10px; text-align:center; }
+  .mob-stat-num { font-family:var(--serif); font-size:22px; font-style:italic; color:var(--gray-900); }
+  .mob-stat-lbl { font-size:10px; color:var(--gray-400); margin-top:2px; }
+  .mob-occ-card { background:var(--white); border:1px solid var(--border); border-radius:9px; padding:12px 14px; margin-bottom:8px; display:flex; align-items:center; gap:10px; }
+  .mob-occ-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .mob-occ-info { flex:1; min-width:0; }
+  .mob-occ-name { font-size:13px; font-weight:bold; color:var(--gray-900); }
+  .mob-occ-detail { font-size:11px; color:var(--gray-400); margin-top:1px; }
+  .mob-occ-right { display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0; }
+  .mob-days { font-size:11px; font-weight:bold; }
+  .mob-gift-btn { padding:4px 8px; background:var(--gold-pale); border:1px solid var(--gold); border-radius:5px; font-family:var(--sans); font-size:10px; font-weight:bold; color:var(--gold); cursor:pointer; text-decoration:none; }
+  .mob-qa-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+  .mob-qa-btn { display:flex; flex-direction:column; gap:5px; padding:12px; border:1px solid var(--border); border-radius:9px; background:var(--white); cursor:pointer; font-family:var(--sans); width:100%; text-align:left; text-decoration:none; }
+  .mob-qa-btn:hover { background:var(--green-pale); border-color:var(--green-mid); }
+  .mob-qa-icon { font-size:18px; }
+  .mob-qa-title { font-size:12px; font-weight:bold; color:var(--gray-900); }
+  .mob-qa-sub { font-size:10px; color:var(--gray-400); }
+  .bot-nav { position:fixed; bottom:0; left:0; right:0; height:62px; background:var(--white); border-top:1px solid var(--border); z-index:100; display:none; }
+  .bot-nav-inner { display:flex; height:100%; }
+  .bn-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; cursor:pointer; color:var(--gray-400); font-size:10px; border-top:3px solid transparent; text-decoration:none; }
+  .bn-sym { font-size:18px; line-height:1; }
+  .bn-item.active { color:var(--green); border-top-color:var(--green); font-weight:bold; }
+</style>
+</head>
+<body>
+
+<!-- ══ DESKTOP ══ -->
+<div class="desk-app" id="desk-app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-wrap">
+        <div class="gg-icon">GG</div>
+        <div><div class="logo-name">GiftGroove</div><div class="logo-tag">Smart Gift Finder</div></div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-sec">Main</div>
+      <a class="nav-item active" href="01_dashboard.html">&#9633; Dashboard</a>
+      <a class="nav-item" href="02_contacts.html">&#9673; Contacts <span class="nbadge" id="desk-contact-badge">0</span></a>
+      <a class="nav-item" href="04_gift_ideas.html">&#9733; Gift Ideas</a>
+      <a class="nav-item" href="04b_saved_gifts.html">&#10022; Saved Gifts <span class="nbadge" id="desk-saved-badge">0</span></a>
+      <div class="nav-sec">Account</div>
+      <a class="nav-item" href="05_settings.html">&#9675; Settings</a>
+    </nav>
+    <div class="sid-foot">
+      <div class="uchip">
+        <div class="uavatar" id="desk-avatar">?</div>
+        <div>
+          <div class="uname" id="desk-username">Loading...</div>
+          <div class="uplan">Free plan</div>
+        </div>
+      </div>
+      <button class="logout-btn" onclick="handleLogout()">Log out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="pg-title">Dashboard</div>
+      <div class="topbar-date" id="desk-date"></div>
+    </div>
+    <div class="content">
+
+      <!-- Banner -->
+      <div class="banner">
+        <div class="banner-text">
+          <h2 id="desk-greeting">Good morning!</h2>
+          <p id="desk-banner-sub">Loading your upcoming occasions...</p>
+        </div>
+        <a class="banner-btn" href="04_gift_ideas.html">&#9733; Find a Gift</a>
+      </div>
+
+      <!-- Stats -->
+      <div class="section-label">GiftGroove by the numbers&hellip;</div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-num" id="desk-stat-occasions">-</div>
+          <div class="stat-label">Occasions this month</div>
+          <div class="stat-sub" id="desk-stat-occasions-sub">&nbsp;</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="desk-stat-contacts">-</div>
+          <div class="stat-label">Contacts tracked</div>
+          <div class="stat-sub"><a href="02_contacts.html" style="color:var(--green);text-decoration:none;">+ Add a contact</a></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="desk-stat-gifts">-</div>
+          <div class="stat-label">Gifts saved</div>
+          <div class="stat-sub"><a href="04b_saved_gifts.html" style="color:var(--green);text-decoration:none;">View saved gifts</a></div>
+        </div>
+      </div>
+
+      <!-- Two column: Quick actions + Upcoming occasions -->
+      <div class="two-col-layout">
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-head"><div class="card-title">Quick actions</div></div>
+          <div class="qa-grid">
+            <a class="qa-btn" href="02_contacts.html"><span class="qa-icon">&#9673;</span><div class="qa-title">Add contact</div><div class="qa-sub">Track a new person</div></a>
+            <a class="qa-btn" href="04_gift_ideas.html"><span class="qa-icon">&#9733;</span><div class="qa-title">Find gifts</div><div class="qa-sub">AI picks from Amazon</div></a>
+            <a class="qa-btn" href="05_settings.html"><span class="qa-icon">&#9675;</span><div class="qa-title">Reminders</div><div class="qa-sub">Set up alerts</div></a>
+            <a class="qa-btn" href="04b_saved_gifts.html"><span class="qa-icon">&#10022;</span><div class="qa-title">Saved gifts</div><div class="qa-sub" id="desk-qa-saved-sub">0 saved</div></a>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-head">
+            <div class="card-title">Upcoming occasions</div>
+            <a class="card-link" href="02_contacts.html">View all</a>
+          </div>
+          <div class="occ-list" id="desk-occ-list">
+            <!-- Populated by JavaScript -->
+            <div class="empty-occ">Loading occasions...</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ══ MOBILE ══ -->
+<div class="mob-app" id="mob-app">
+  <div class="mob-header">
+    <div class="mob-brand"><div class="gg-icon-sm">GG</div><div class="mob-app-name">GiftGroove</div></div>
+    <div class="mob-greeting" id="mob-greeting">Hi!</div>
+  </div>
+  <div class="mob-scroll">
+
+    <div class="mob-banner">
+      <h3 id="mob-banner-title">Loading...</h3>
+      <p id="mob-banner-sub">Checking your upcoming occasions...</p>
+      <a class="mob-banner-btn" href="04_gift_ideas.html">&#9733; Find a Gift</a>
+    </div>
+
+    <div class="mob-sec-label">Quick actions</div>
+    <div class="mob-qa-grid">
+      <a class="mob-qa-btn" href="02_contacts.html"><span class="mob-qa-icon">&#9673;</span><div class="mob-qa-title">Add a contact</div><div class="mob-qa-sub">Track someone new</div></a>
+      <a class="mob-qa-btn" href="04_gift_ideas.html"><span class="mob-qa-icon">&#9733;</span><div class="mob-qa-title">Find gift ideas</div><div class="mob-qa-sub">AI picks from Amazon</div></a>
+      <a class="mob-qa-btn" href="05_settings.html"><span class="mob-qa-icon">&#9675;</span><div class="mob-qa-title">Set reminders</div><div class="mob-qa-sub">Never miss a date</div></a>
+      <a class="mob-qa-btn" href="04b_saved_gifts.html"><span class="mob-qa-icon">&#10022;</span><div class="mob-qa-title">Saved gifts</div><div class="mob-qa-sub" id="mob-qa-saved-sub">0 saved</div></a>
+    </div>
+
+    <div class="mob-sec-label">GiftGroove by the numbers&hellip;</div>
+    <div class="mob-stats">
+      <div class="mob-stat"><div class="mob-stat-num" id="mob-stat-occasions">-</div><div class="mob-stat-lbl">This month</div></div>
+      <div class="mob-stat"><div class="mob-stat-num" id="mob-stat-contacts">-</div><div class="mob-stat-lbl">Contacts</div></div>
+      <div class="mob-stat"><div class="mob-stat-num" id="mob-stat-gifts">-</div><div class="mob-stat-lbl">Gifts saved</div></div>
+    </div>
+
+    <div class="mob-sec-label">Upcoming occasions</div>
+    <div id="mob-occ-list">
+      <!-- Populated by JavaScript -->
+      <div class="empty-occ">Loading occasions...</div>
+    </div>
+
+  </div>
+  <div class="bot-nav" id="bot-nav">
+    <div class="bot-nav-inner">
+      <a class="bn-item active" href="01_dashboard.html"><span class="bn-sym">&#9633;</span>Home</a>
+      <a class="bn-item" href="02_contacts.html"><span class="bn-sym">&#9673;</span>Contacts</a>
+      <a class="bn-item" href="04_gift_ideas.html"><span class="bn-sym">&#9733;</span>Gifts</a>
+      <a class="bn-item" href="04b_saved_gifts.html"><span class="bn-sym">&#10022;</span>Saved</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────
+// SUPABASE CONNECTION
+// ─────────────────────────────────────────────────────────
+const SUPABASE_URL      = 'https://xaglxbzeexlumisozmdb.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhhZ2x4YnplZXhsdW1pc296bWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NzIyNDAsImV4cCI6MjA4OTQ0ODI0MH0.2Umu3Vm3-XTTnOv0_iORow0QUDCTEU2e56lAN_4j0Aw';
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ─────────────────────────────────────────────────────────
+// BOOT: check auth then load all data
+// ─────────────────────────────────────────────────────────
+async function boot() {
+  // 1. Check if user is logged in
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    // Not logged in — send to login page
+    window.location.href = '07_login.html';
+    return;
+  }
+
+  const user = session.user;
+
+  // 2. Set today's date in topbar
+  setDate();
+
+  // 3. Set greeting and user info
+  setUserInfo(user);
+
+  // 4. Load all data in parallel for speed
+  await Promise.all([
+    loadContacts(user.id),
+    loadOccasions(user.id),
+    loadSavedGifts(user.id),
+  ]);
+}
+
+// ─────────────────────────────────────────────────────────
+// SET DATE
+// ─────────────────────────────────────────────────────────
+function setDate() {
+  const now  = new Date();
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const str  = days[now.getDay()] + ', ' + months[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear();
+  document.getElementById('desk-date').textContent = str;
+}
+
+// ─────────────────────────────────────────────────────────
+// SET USER INFO (greeting, avatar, sidebar name)
+// ─────────────────────────────────────────────────────────
+function setUserInfo(user) {
+  // Get first name from user metadata (set during signup)
+  const fullName  = user.user_metadata?.full_name || user.email || 'there';
+  const firstName = fullName.split(' ')[0];
+  const initial   = firstName.charAt(0).toUpperCase();
+
+  // Time-based greeting
+  const hour = new Date().getHours();
+  const timeGreeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  // Desktop
+  document.getElementById('desk-greeting').textContent  = timeGreeting + ', ' + firstName + '!';
+  document.getElementById('desk-username').textContent  = fullName;
+  document.getElementById('desk-avatar').textContent    = initial;
+
+  // Mobile
+  document.getElementById('mob-greeting').textContent = 'Hi, ' + firstName + '!';
+}
+
+// ─────────────────────────────────────────────────────────
+// LOAD CONTACTS (count only for stats)
+// ─────────────────────────────────────────────────────────
+async function loadContacts(userId) {
+  const { count, error } = await sb
+    .from('contacts')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  const n = error ? 0 : (count || 0);
+
+  // Update stats tiles
+  document.getElementById('desk-stat-contacts').textContent = n;
+  document.getElementById('mob-stat-contacts').textContent  = n;
+
+  // Update nav badges
+  document.getElementById('desk-contact-badge').textContent = n;
+}
+
+// ─────────────────────────────────────────────────────────
+// LOAD SAVED GIFTS (count only for stats)
+// ─────────────────────────────────────────────────────────
+async function loadSavedGifts(userId) {
+  const { count, error } = await sb
+    .from('saved_gifts')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  const n = error ? 0 : (count || 0);
+
+  // Update stats tiles
+  document.getElementById('desk-stat-gifts').textContent = n;
+  document.getElementById('mob-stat-gifts').textContent  = n;
+
+  // Update nav badges and quick actions
+  document.getElementById('desk-saved-badge').textContent   = n;
+  document.getElementById('desk-qa-saved-sub').textContent  = n + ' saved';
+  document.getElementById('mob-qa-saved-sub').textContent   = n + ' saved';
+}
+
+// ─────────────────────────────────────────────────────────
+// LOAD OCCASIONS (upcoming, joined with contact names)
+// ─────────────────────────────────────────────────────────
+async function loadOccasions(userId) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().slice(0, 10);
+
+  // Get all contacts for this user so we can look up names
+  const { data: contacts, error: contactErr } = await sb
+    .from('contacts')
+    .select('id, first_name, last_name')
+    .eq('user_id', userId);
+
+  if (contactErr || !contacts) {
+    showEmptyOccasions('Could not load occasions. Please refresh.');
+    return;
+  }
+
+  // Build a quick lookup map: contact id → full name
+  const contactMap = {};
+  contacts.forEach(c => {
+    contactMap[c.id] = c.first_name + (c.last_name ? ' ' + c.last_name : '');
+  });
+
+  const contactIds = contacts.map(c => c.id);
+
+  // If no contacts yet, show empty state
+  if (contactIds.length === 0) {
+    showEmptyOccasions('No contacts yet. Add your first contact to see occasions here.');
+    updateBannerNoContacts();
+    document.getElementById('desk-stat-occasions').textContent = '0';
+    document.getElementById('mob-stat-occasions').textContent  = '0';
+    return;
+  }
+
+  // Get all upcoming occasions for this user's contacts
+  const { data: occasions, error: occErr } = await sb
+    .from('occasions')
+    .select('id, contact_id, occasion_type, custom_title, occasion_date')
+    .in('contact_id', contactIds)
+    .gte('occasion_date', todayStr)
+    .order('occasion_date', { ascending: true })
+    .limit(10);
+
+  if (occErr || !occasions || occasions.length === 0) {
+    showEmptyOccasions('No upcoming occasions. Add occasions to your contacts to see them here.');
+    updateBannerNoOccasions();
+    document.getElementById('desk-stat-occasions').textContent = '0';
+    document.getElementById('mob-stat-occasions').textContent  = '0';
+    return;
+  }
+
+  // Count occasions this month
+  const thisMonth = today.getMonth();
+  const thisYear  = today.getFullYear();
+  const monthCount = occasions.filter(o => {
+    const d = new Date(o.occasion_date);
+    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+  }).length;
+
+  document.getElementById('desk-stat-occasions').textContent = monthCount;
+  document.getElementById('mob-stat-occasions').textContent  = monthCount;
+
+  // Update occasion sub-label
+  const nextOcc = occasions[0];
+  const nextName = contactMap[nextOcc.contact_id] || 'Unknown';
+  const subText  = monthCount > 0 ? 'Next: ' + nextName : 'None this month';
+  document.getElementById('desk-stat-occasions-sub').textContent = subText;
+
+  // Render occasion rows
+  renderOccasions(occasions, contactMap, today);
+
+  // Update banner
+  updateBannerWithOccasions(occasions, contactMap, today);
+}
+
+// ─────────────────────────────────────────────────────────
+// RENDER OCCASION ROWS
+// ─────────────────────────────────────────────────────────
+function renderOccasions(occasions, contactMap, today) {
+  const deskList = document.getElementById('desk-occ-list');
+  const mobList  = document.getElementById('mob-occ-list');
+  deskList.innerHTML = '';
+  mobList.innerHTML  = '';
+
+  occasions.slice(0, 8).forEach(occ => {
+    const name      = contactMap[occ.contact_id] || 'Unknown';
+    const occType   = occ.occasion_type === 'Other' ? (occ.custom_title || 'Other') : occ.occasion_type;
+    const occDate   = new Date(occ.occasion_date + 'T00:00:00'); // force local time
+    const daysAway  = Math.round((occDate - today) / (1000 * 60 * 60 * 24));
+    const dateStr   = occDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const urgency   = daysAway <= 7 ? 'urgent' : daysAway <= 21 ? 'soon' : daysAway <= 60 ? 'later' : 'far';
+    const daysLabel = daysAway === 0 ? 'Today!' : daysAway === 1 ? 'Tomorrow' : daysAway + ' days';
+    const giftLink  = '04_gift_ideas.html';
+
+    // Desktop row
+    deskList.innerHTML += `
+      <div class="occ-row">
+        <div class="occ-dot dot-${urgency}"></div>
+        <div class="occ-info">
+          <div class="occ-name">${escHtml(name)}</div>
+          <div class="occ-detail">${escHtml(occType)} &middot; ${dateStr}</div>
+        </div>
+        <div class="occ-days days-${urgency}">${daysLabel}</div>
+        <a class="occ-gift-btn" href="${giftLink}">&#9733; Find Gift</a>
+      </div>`;
+
+    // Mobile card
+    mobList.innerHTML += `
+      <div class="mob-occ-card">
+        <div class="mob-occ-dot dot-${urgency}"></div>
+        <div class="mob-occ-info">
+          <div class="mob-occ-name">${escHtml(name)}</div>
+          <div class="mob-occ-detail">${escHtml(occType)} &middot; ${dateStr}</div>
+        </div>
+        <div class="mob-occ-right">
+          <span class="mob-days days-${urgency}">${daysLabel}</span>
+          <a class="mob-gift-btn" href="${giftLink}">&#9733; Gift</a>
+        </div>
+      </div>`;
+  });
+}
+
+// ─────────────────────────────────────────────────────────
+// BANNER MESSAGES
+// ─────────────────────────────────────────────────────────
+function updateBannerWithOccasions(occasions, contactMap, today) {
+  const next      = occasions[0];
+  const nextName  = contactMap[next.contact_id] || 'someone';
+  const nextDate  = new Date(next.occasion_date + 'T00:00:00');
+  const daysAway  = Math.round((nextDate - today) / (1000 * 60 * 60 * 24));
+  const occType   = next.occasion_type === 'Other' ? (next.custom_title || 'occasion') : next.occasion_type;
+  const total     = occasions.length;
+
+  const sub = total === 1
+    ? nextName + "'s " + occType + ' is in ' + daysAway + ' days.'
+    : 'You have ' + total + ' upcoming occasions. Next: ' + nextName + ' in ' + daysAway + ' days.';
+
+  document.getElementById('desk-banner-sub').textContent = sub;
+  document.getElementById('mob-banner-title').textContent = total + ' upcoming occasion' + (total !== 1 ? 's' : '');
+  document.getElementById('mob-banner-sub').textContent   = sub;
+}
+
+function updateBannerNoOccasions() {
+  document.getElementById('desk-banner-sub').textContent  = 'No upcoming occasions. Add occasions to your contacts.';
+  document.getElementById('mob-banner-title').textContent = 'All caught up!';
+  document.getElementById('mob-banner-sub').textContent   = 'No upcoming occasions right now.';
+}
+
+function updateBannerNoContacts() {
+  document.getElementById('desk-banner-sub').textContent  = 'Add your first contact to get started.';
+  document.getElementById('mob-banner-title').textContent = 'Welcome to GiftGroove!';
+  document.getElementById('mob-banner-sub').textContent   = 'Add your first contact to get started.';
+}
+
+function showEmptyOccasions(msg) {
+  document.getElementById('desk-occ-list').innerHTML = '<div class="empty-occ">' + msg + '</div>';
+  document.getElementById('mob-occ-list').innerHTML  = '<div class="empty-occ">' + msg + '</div>';
+}
+
+// ─────────────────────────────────────────────────────────
+// LOGOUT
+// ─────────────────────────────────────────────────────────
+async function handleLogout() {
+  await sb.auth.signOut();
+  window.location.href = '07_login.html';
+}
+
+// ─────────────────────────────────────────────────────────
+// MOBILE / DESKTOP TOGGLE (for testing only)
+// In production this is handled by CSS media queries
+// ─────────────────────────────────────────────────────────
+function checkViewport() {
+  const isMobile = window.innerWidth < 768;
+  document.getElementById('desk-app').style.display = isMobile ? 'none' : 'flex';
+  document.getElementById('mob-app').style.display  = isMobile ? 'flex' : 'none';
+  document.getElementById('bot-nav').style.display  = isMobile ? 'flex' : 'none';
+}
+
+// ─────────────────────────────────────────────────────────
+// UTILITY: escape HTML to prevent XSS
+// Always escape user data before inserting into innerHTML
+// ─────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ─────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────
+checkViewport();
+window.addEventListener('resize', checkViewport);
+boot();
+</script>
+
+</body>
+</html>
