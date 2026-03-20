@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GiftGroove &mdash; Gift Ideas</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --white:#FFFFFF; --off-white:#F9F9F7; --gray-50:#F4F4F2; --gray-400:#9E9E96;
+    --gray-600:#6B6B64; --gray-900:#1C1C1A; --red:#C0392B; --red-pale:#FDECEA;
+    --green:#2D6A4F; --green-mid:#3A8B65; --green-pale:#EAF4EF;
+    --gold:#D4941A; --gold-pale:#FEF7E6; --border:#E8E8E4;
+    --sans:Arial,Helvetica,sans-serif; --serif:Georgia,'Times New Roman',serif;
+  }
+  body { background:var(--off-white); color:var(--gray-900); font-family:var(--sans); font-size:14px; line-height:1.5; margin:0; }
+  .gg-icon { width:38px; height:38px; border-radius:10px; flex-shrink:0; background:linear-gradient(135deg,#C0392B 0%,#D4941A 100%); display:flex; align-items:center; justify-content:center; font-family:Arial,sans-serif; font-size:13px; font-weight:bold; color:#fff; letter-spacing:-1px; user-select:none; }
+  .gg-icon-sm { width:30px; height:30px; border-radius:8px; flex-shrink:0; background:linear-gradient(135deg,#C0392B 0%,#D4941A 100%); display:flex; align-items:center; justify-content:center; font-family:Arial,sans-serif; font-size:11px; font-weight:bold; color:#fff; letter-spacing:-1px; user-select:none; }
+
+  .desk-app { display:flex; height:100vh; overflow:hidden; }
+  .sidebar { width:210px; min-width:210px; height:100%; background:var(--white); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; overflow-y:auto; }
+  .logo { padding:18px 20px 16px; border-bottom:1px solid var(--border); }
+  .logo-wrap { display:flex; align-items:center; gap:10px; }
+  .logo-name { font-family:var(--sans); font-size:17px; font-weight:bold; color:var(--red); }
+  .logo-tag { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gray-400); margin-top:2px; }
+  .nav { flex:1; padding:16px 0; }
+  .nav-sec { font-size:9px; font-weight:bold; letter-spacing:0.18em; text-transform:uppercase; color:var(--gray-400); padding:0 20px; margin:14px 0 4px; }
+  .nav-item { text-decoration:none; display:flex; align-items:center; gap:10px; padding:10px 20px; font-size:13px; color:var(--gray-600); border-left:3px solid transparent; transition:all 0.15s; }
+  .nav-item:hover { color:var(--gray-900); background:var(--gray-50); }
+  .nav-item.active { color:var(--green); background:var(--green-pale); border-left-color:var(--green); font-weight:bold; }
+  .sid-foot { padding:16px 20px 20px; border-top:1px solid var(--border); }
+  .uchip { display:flex; align-items:center; gap:9px; }
+  .uavatar { width:32px; height:32px; border-radius:50%; background:var(--gold-pale); border:2px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:bold; color:var(--gold); }
+  .uname { font-size:12px; font-weight:bold; }
+  .uplan { font-size:10px; color:var(--gray-400); }
+  .logout-btn { margin-top:10px; width:100%; padding:7px; border:1px solid var(--border); border-radius:7px; background:transparent; font-family:var(--sans); font-size:11px; color:var(--gray-400); cursor:pointer; }
+  .logout-btn:hover { border-color:var(--red); color:var(--red); background:var(--red-pale); }
+
+  .main { flex:1; min-width:0; height:100%; overflow-y:auto; display:flex; flex-direction:column; }
+  .topbar { display:flex; align-items:center; padding:14px 24px; border-bottom:1px solid var(--border); background:var(--white); flex-shrink:0; position:sticky; top:0; z-index:10; }
+  .pg-title { font-family:var(--serif); font-size:22px; font-style:italic; color:var(--gray-900); }
+  .content { padding:24px 24px 48px; flex:1; }
+
+  /* Search panel */
+  .search-panel { background:var(--white); border:1px solid var(--border); border-radius:12px; padding:24px; margin-bottom:20px; }
+  .panel-title { font-family:var(--serif); font-size:17px; font-style:italic; color:var(--gray-900); margin-bottom:18px; }
+  .search-fields { display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:end; }
+  .field-group { display:flex; flex-direction:column; gap:6px; }
+  .field-label { font-size:11px; font-weight:bold; letter-spacing:0.1em; text-transform:uppercase; color:var(--gray-400); }
+  .f-select { padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--gray-50); font-family:var(--sans); font-size:13px; color:var(--gray-900); outline:none; width:100%; }
+  .contact-pill { display:none; align-items:center; gap:8px; margin-top:8px; padding:8px 12px; background:var(--green-pale); border:1px solid var(--green-mid); border-radius:8px; font-size:12px; color:var(--green); }
+  .contact-pill.visible { display:flex; }
+  .pill-tag { font-size:10px; font-weight:bold; letter-spacing:0.06em; text-transform:uppercase; background:var(--green); color:#fff; padding:2px 6px; border-radius:10px; }
+
+  /* Slider */
+  .slider-wrap { position:relative; height:36px; margin-top:8px; }
+  .slider-track { position:absolute; top:50%; transform:translateY(-50%); left:0; right:0; height:4px; background:var(--border); border-radius:2px; }
+  .slider-fill { position:absolute; top:50%; transform:translateY(-50%); height:4px; background:var(--green); border-radius:2px; pointer-events:none; }
+  .slider-range { position:absolute; top:50%; transform:translateY(-50%); width:100%; height:4px; appearance:none; background:transparent; pointer-events:none; outline:none; }
+  .slider-range::-webkit-slider-thumb { appearance:none; width:18px; height:18px; border-radius:50%; background:var(--white); border:2px solid var(--green); cursor:pointer; pointer-events:all; box-shadow:0 1px 4px rgba(0,0,0,0.15); }
+  .budget-labels { display:flex; justify-content:space-between; margin-top:6px; font-size:12px; color:var(--gray-600); }
+  .budget-val { font-weight:bold; color:var(--green); }
+  .search-btn-wrap { grid-column:1/-1; margin-top:8px; display:flex; justify-content:center; }
+  .ai-btn { width:100%; max-width:320px; padding:14px; border-radius:8px; background:linear-gradient(90deg,#A8D8EA,#F4A7C3,#C3A8E8); color:#fff; font-family:var(--sans); font-size:14px; font-weight:bold; text-align:center; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,0.15); text-shadow:0 1px 4px rgba(0,0,0,0.35); border:none; }
+  .ai-btn:hover { opacity:0.92; }
+  .ai-btn:disabled { opacity:0.7; cursor:not-allowed; }
+
+  /* Webhook notice */
+  .webhook-notice { display:none; background:var(--gold-pale); border:1px solid var(--gold); border-radius:8px; padding:12px 16px; margin-top:12px; font-size:12px; color:var(--gray-600); line-height:1.5; }
+  .webhook-notice.visible { display:block; }
+  .webhook-notice strong { color:var(--gold); }
+
+  /* Results */
+  .loading-state { display:none; flex-direction:column; align-items:center; padding:48px 24px; gap:14px; }
+  .loading-state.visible { display:flex; }
+  .spinner { width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .loading-text { font-size:13px; color:var(--gray-400); font-style:italic; }
+  .prompt-state { display:flex; flex-direction:column; align-items:center; padding:48px 24px; text-align:center; gap:10px; }
+  .prompt-icon { font-size:40px; }
+  .prompt-title { font-family:var(--serif); font-size:20px; font-style:italic; color:var(--gray-600); }
+  .prompt-sub { font-size:13px; color:var(--gray-400); max-width:300px; }
+  .context-banner { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--green-pale); border:1px solid var(--green-mid); border-radius:10px; margin-bottom:20px; font-size:13px; color:var(--green); flex-wrap:wrap; }
+  .cb-tags { display:flex; gap:6px; flex-wrap:wrap; margin-left:auto; }
+  .cb-tag { font-size:10px; font-weight:bold; letter-spacing:0.06em; text-transform:uppercase; background:var(--white); color:var(--green); border:1px solid var(--green-mid); padding:2px 8px; border-radius:10px; }
+  .results-header { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px; }
+  .results-title { font-family:var(--serif); font-size:17px; font-style:italic; color:var(--gray-900); }
+  .results-meta { font-size:12px; color:var(--gray-400); }
+  .results-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .gift-card { background:var(--white); border:1px solid var(--border); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; transition:box-shadow 0.15s; }
+  .gift-card:hover { box-shadow:0 4px 16px rgba(0,0,0,0.08); }
+  .gift-img { width:100%; height:110px; background:var(--gray-50); display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); font-size:32px; }
+  .gift-body { padding:12px; display:flex; flex-direction:column; flex:1; gap:5px; }
+  .gift-name { font-size:12px; font-weight:bold; color:var(--gray-900); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.4; }
+  .gift-desc { font-size:11px; color:var(--gray-400); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; flex:1; }
+  .gift-price { font-size:14px; font-weight:bold; color:var(--green); margin-top:4px; }
+  .amazon-btn { display:block; width:100%; padding:8px; margin-top:8px; background:var(--gold); color:#fff; border:none; border-radius:7px; font-family:var(--sans); font-size:11px; font-weight:bold; text-align:center; cursor:pointer; text-decoration:none; }
+  .amazon-btn:hover { opacity:0.9; }
+  .save-gift-btn { display:block; width:100%; padding:7px; margin-top:4px; background:var(--white); color:var(--green); border:1px solid var(--green-mid); border-radius:7px; font-family:var(--sans); font-size:11px; font-weight:bold; text-align:center; cursor:pointer; }
+  .save-gift-btn:hover { background:var(--green-pale); }
+  .save-gift-btn.saved { background:var(--green-pale); color:var(--green); border-color:var(--green); }
+  .amazon-note { font-size:10px; color:var(--gray-400); text-align:center; margin-top:4px; }
+
+  /* Browse by interest */
+  .browse-panel { display:none; background:var(--gold-pale); border:1px solid #E8C97A; border-radius:12px; padding:16px 20px; margin-top:24px; align-items:center; gap:14px; flex-wrap:wrap; }
+  .browse-panel.visible { display:flex; }
+  .browse-label { font-size:13px; font-weight:bold; color:var(--gray-900); }
+  .browse-sub { font-size:11px; color:var(--gray-600); margin-top:1px; }
+  .browse-select { padding:9px 12px; border:1px solid #D4B86A; border-radius:8px; background:var(--white); font-family:var(--sans); font-size:13px; color:var(--gray-900); outline:none; min-width:160px; }
+  .browse-btn { padding:9px 18px; border:none; border-radius:8px; background:var(--gold); color:#fff; font-family:var(--sans); font-size:12px; font-weight:bold; cursor:pointer; }
+  .browse-btn:hover { opacity:0.88; }
+
+  /* Mobile */
+  .mob-app { display:none; flex-direction:column; height:100vh; overflow:hidden; }
+  .mob-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--white); border-bottom:1px solid var(--border); flex-shrink:0; }
+  .mob-brand { display:flex; align-items:center; gap:8px; }
+  .mob-app-name { font-family:var(--sans); font-size:15px; font-weight:bold; color:var(--red); }
+  .mob-page-label { font-family:var(--serif); font-size:15px; font-style:italic; color:var(--gray-600); }
+  .mob-scroll { flex:1; overflow-y:auto; padding:16px 14px 80px; }
+  .mob-search-panel { background:var(--white); border:1px solid var(--border); border-radius:12px; padding:18px 16px; margin-bottom:14px; }
+  .mob-gift-card { background:var(--white); border:1px solid var(--border); border-radius:10px; overflow:hidden; display:flex; margin-bottom:12px; }
+  .mob-gift-img { width:90px; min-width:90px; height:110px; background:var(--gray-50); display:flex; align-items:center; justify-content:center; font-size:28px; border-right:1px solid var(--border); flex-shrink:0; }
+  .mob-gift-body { padding:12px; display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; }
+  .mob-gift-name { font-size:12px; font-weight:bold; color:var(--gray-900); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .mob-gift-price { font-size:13px; font-weight:bold; color:var(--green); margin-top:2px; }
+  .mob-gift-btns { display:flex; gap:5px; margin-top:6px; }
+  .mob-amazon-btn { flex:1; padding:7px; background:var(--gold); color:#fff; border:none; border-radius:6px; font-family:var(--sans); font-size:10px; font-weight:bold; text-align:center; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; }
+  .mob-save-btn { flex:1; padding:7px; background:var(--white); color:var(--green); border:1px solid var(--green-mid); border-radius:6px; font-family:var(--sans); font-size:10px; font-weight:bold; text-align:center; cursor:pointer; }
+  .bot-nav { position:fixed; bottom:0; left:0; right:0; height:62px; background:var(--white); border-top:1px solid var(--border); z-index:100; display:none; }
+  .bot-nav-inner { display:flex; height:100%; }
+  .bn-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:var(--gray-400); font-size:10px; border-top:3px solid transparent; text-decoration:none; }
+  .bn-sym { font-size:18px; line-height:1; }
+  .bn-item.active { color:var(--green); border-top-color:var(--green); font-weight:bold; }
+</style>
+</head>
+<body>
+
+<!-- DESKTOP -->
+<div class="desk-app" id="desk-app">
+  <aside class="sidebar">
+    <div class="logo"><div class="logo-wrap"><div class="gg-icon">GG</div><div><div class="logo-name">GiftGroove</div><div class="logo-tag">Smart Gift Finder</div></div></div></div>
+    <nav class="nav">
+      <div class="nav-sec">Main</div>
+      <a class="nav-item" href="01_dashboard.html">&#9633; Dashboard</a>
+      <a class="nav-item" href="02_contacts.html">&#9673; Contacts</a>
+      <a class="nav-item active" href="04_gift_ideas.html">&#9733; Gift Ideas</a>
+      <a class="nav-item" href="04b_saved_gifts.html">&#10022; Saved Gifts</a>
+      <div class="nav-sec">Account</div>
+      <a class="nav-item" href="05_settings.html">&#9675; Settings</a>
+    </nav>
+    <div class="sid-foot">
+      <div class="uchip"><div class="uavatar" id="desk-avatar">?</div><div><div class="uname" id="desk-uname">...</div><div class="uplan">Free plan</div></div></div>
+      <button class="logout-btn" onclick="handleLogout()">Log out</button>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="topbar"><div class="pg-title">Gift Ideas</div></div>
+    <div class="content">
+      <div class="search-panel">
+        <div class="panel-title">Who are you shopping for?</div>
+        <div class="search-fields">
+          <div class="field-group">
+            <div class="field-label">Select a contact</div>
+            <select class="f-select" id="desk-contact" onchange="onContactChange('desk')">
+              <option value="">-- Choose a contact --</option>
+            </select>
+            <div class="contact-pill" id="desk-pill"><span class="pill-tag">Profile</span><span id="desk-pill-text"></span></div>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Budget range</div>
+            <div class="slider-wrap">
+              <div class="slider-track"></div>
+              <div class="slider-fill" id="desk-fill"></div>
+              <input type="range" class="slider-range" id="desk-min" min="0" max="500" value="0" step="5" oninput="updateSlider('desk')" />
+              <input type="range" class="slider-range" id="desk-max" min="0" max="500" value="500" step="5" oninput="updateSlider('desk')" />
+            </div>
+            <div class="budget-labels"><span>$0</span><span>Budget: <span class="budget-val" id="desk-budget-label">Any budget</span></span><span>$500</span></div>
+          </div>
+          <div class="search-btn-wrap">
+            <button class="ai-btn" id="desk-search-btn" onclick="runSearch('desk')">&#9733; Find Gift Ideas with AI</button>
+          </div>
+        </div>
+        <div class="webhook-notice" id="desk-webhook-notice">
+          <strong>&#9888; Make webhook not yet connected.</strong> To enable real AI gift search, complete the Make setup in Week 4 of your build guide and paste your webhook URL into this file where it says <code>MAKE_WEBHOOK_URL</code>.
+        </div>
+      </div>
+
+      <div id="desk-results-area">
+        <div class="prompt-state" id="desk-prompt">
+          <div class="prompt-icon">&#9733;</div>
+          <div class="prompt-title">Select a contact to get started</div>
+          <div class="prompt-sub">Choose who you're shopping for, set a budget, then let AI find the perfect gift ideas.</div>
+        </div>
+        <div class="loading-state" id="desk-loading">
+          <div class="spinner"></div>
+          <div class="loading-text" id="desk-loading-text">Finding gift ideas...</div>
+        </div>
+        <div id="desk-results" style="display:none;"></div>
+      </div>
+
+      <!-- Browse by interest (shown after contact selected) -->
+      <div class="browse-panel" id="desk-browse">
+        <div><div class="browse-label">Browse gifts by interest</div><div class="browse-sub">Search Amazon for a specific hobby</div></div>
+        <select class="browse-select" id="desk-browse-select"></select>
+        <button class="browse-btn" onclick="browseAmazon('desk')">Search Amazon &#8599;</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MOBILE -->
+<div class="mob-app" id="mob-app">
+  <div class="mob-header">
+    <div class="mob-brand"><div class="gg-icon-sm">GG</div><div class="mob-app-name">GiftGroove</div></div>
+    <div class="mob-page-label">Gift Ideas</div>
+  </div>
+  <div class="mob-scroll">
+    <div class="mob-search-panel">
+      <div class="field-group" style="margin-bottom:12px;">
+        <div class="field-label">Select a contact</div>
+        <select class="f-select" id="mob-contact" onchange="onContactChange('mob')">
+          <option value="">-- Choose a contact --</option>
+        </select>
+        <div class="contact-pill" id="mob-pill"><span class="pill-tag">Profile</span><span id="mob-pill-text"></span></div>
+      </div>
+      <div class="field-group" style="margin-bottom:14px;">
+        <div class="field-label">Budget range</div>
+        <div class="slider-wrap"><div class="slider-track"></div><div class="slider-fill" id="mob-fill"></div><input type="range" class="slider-range" id="mob-min" min="0" max="500" value="0" step="5" oninput="updateSlider('mob')" /><input type="range" class="slider-range" id="mob-max" min="0" max="500" value="500" step="5" oninput="updateSlider('mob')" /></div>
+        <div class="budget-labels"><span>$0</span><span>Budget: <span class="budget-val" id="mob-budget-label">Any budget</span></span><span>$500</span></div>
+      </div>
+      <button class="ai-btn" style="width:100%;max-width:100%;" onclick="runSearch('mob')">&#9733; Find Gift Ideas with AI</button>
+    </div>
+    <div id="mob-results-area">
+      <div class="prompt-state" id="mob-prompt"><div class="prompt-icon">&#9733;</div><div class="prompt-title">Select a contact</div><div class="prompt-sub">Choose who you're shopping for then let AI find the perfect gifts.</div></div>
+      <div class="loading-state" id="mob-loading"><div class="spinner"></div><div class="loading-text" id="mob-loading-text">Finding gift ideas...</div></div>
+      <div id="mob-results"></div>
+    </div>
+  </div>
+  <div class="bot-nav" id="bot-nav">
+    <div class="bot-nav-inner">
+      <a class="bn-item" href="01_dashboard.html"><span class="bn-sym">&#9633;</span>Home</a>
+      <a class="bn-item" href="02_contacts.html"><span class="bn-sym">&#9673;</span>Contacts</a>
+      <a class="bn-item active" href="04_gift_ideas.html"><span class="bn-sym">&#9733;</span>Gifts</a>
+      <a class="bn-item" href="04b_saved_gifts.html"><span class="bn-sym">&#10022;</span>Saved</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────
+// !! IMPORTANT: Paste your Make webhook URL below in Week 4 !!
+// Steps:
+//   1. Set up your Make scenario with a Webhook trigger
+//   2. Copy the webhook URL from Make
+//   3. Replace the placeholder below with your real URL
+// ─────────────────────────────────────────────────────────
+const MAKE_WEBHOOK_URL = 'PASTE_YOUR_MAKE_WEBHOOK_URL_HERE';
+
+const SUPABASE_URL      = 'https://xaglxbzeexlumisozmdb.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhhZ2x4YnplZXhsdW1pc296bWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NzIyNDAsImV4cCI6MjA4OTQ0ODI0MH0.2Umu3Vm3-XTTnOv0_iORow0QUDCTEU2e56lAN_4j0Aw';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let contacts = [];
+let selectedContact = null;
+const loadingMessages = ['Analyzing interests...','Searching Amazon products...','Matching to your budget...','Checking bestsellers...','Almost there...'];
+let msgTimer = null;
+
+async function boot() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = '07_login.html'; return; }
+  currentUser = session.user;
+  const name = currentUser.user_metadata?.full_name || currentUser.email || '';
+  document.getElementById('desk-uname').textContent  = name;
+  document.getElementById('desk-avatar').textContent = name.charAt(0).toUpperCase();
+
+  // Check if webhook is configured
+  if (MAKE_WEBHOOK_URL === 'PASTE_YOUR_MAKE_WEBHOOK_URL_HERE') {
+    document.getElementById('desk-webhook-notice').classList.add('visible');
+  }
+
+  await loadContacts();
+  updateSlider('desk');
+  updateSlider('mob');
+
+  // Pre-select contact from URL param if present
+  const params = new URLSearchParams(window.location.search);
+  const preId = params.get('contact');
+  if (preId) {
+    document.getElementById('desk-contact').value = preId;
+    document.getElementById('mob-contact').value  = preId;
+    onContactChange('desk');
+    onContactChange('mob');
+  }
+}
+
+async function loadContacts() {
+  const { data } = await sb.from('contacts').select('*').eq('user_id', currentUser.id).order('first_name');
+  contacts = data || [];
+  const options = contacts.map(c =>
+    `<option value="${c.id}">${c.first_name}${c.last_name ? ' ' + c.last_name : ''}</option>`
+  ).join('');
+  document.getElementById('desk-contact').innerHTML = '<option value="">-- Choose a contact --</option>' + options;
+  document.getElementById('mob-contact').innerHTML  = '<option value="">-- Choose a contact --</option>' + options;
+}
+
+function onContactChange(view) {
+  const sel = document.getElementById(view + '-contact');
+  const pill = document.getElementById(view + '-pill');
+  const pillText = document.getElementById(view + '-pill-text');
+  const browsePanel = document.getElementById('desk-browse');
+  const browseSel = document.getElementById('desk-browse-select');
+
+  const contact = contacts.find(c => c.id === sel.value);
+  selectedContact = contact || null;
+
+  if (contact) {
+    const details = [contact.gender, contact.age_range, contact.interests].filter(Boolean).join(' · ');
+    pillText.textContent = details || contact.relationship || '';
+    pill.classList.add('visible');
+
+    // Populate browse by interest
+    if (contact.interests && browsePanel) {
+      const interests = contact.interests.split(',').map(s => s.trim()).filter(Boolean);
+      browseSel.innerHTML = interests.map(i => `<option value="${i}">${i}</option>`).join('');
+      browsePanel.classList.add('visible');
+    }
+  } else {
+    pill.classList.remove('visible');
+    if (browsePanel) browsePanel.classList.remove('visible');
+  }
+}
+
+function updateSlider(view) {
+  const minEl = document.getElementById(view + '-min');
+  const maxEl = document.getElementById(view + '-max');
+  const fill  = document.getElementById(view + '-fill');
+  const label = document.getElementById(view + '-budget-label');
+  let minVal = parseInt(minEl.value), maxVal = parseInt(maxEl.value);
+  if (minVal >= maxVal - 10) {
+    if (document.activeElement === minEl) { minEl.value = maxVal - 10; minVal = maxVal - 10; }
+    else { maxEl.value = minVal + 10; maxVal = minVal + 10; }
+  }
+  fill.style.left  = (minVal / 5) + '%';
+  fill.style.width = ((maxVal - minVal) / 5) + '%';
+  label.textContent = (minVal === 0 && maxVal === 500) ? 'Any budget' : minVal === 0 ? 'Up to $' + maxVal : '$' + minVal + ' \u2013 $' + maxVal;
+}
+
+function browseAmazon(view) {
+  const sel = document.getElementById(view + '-browse-select');
+  if (!sel || !sel.value) return;
+  window.open('https://www.amazon.com/s?k=' + encodeURIComponent(sel.value + ' gift ideas') + '&tag=YOUR-AFFILIATE-TAG', 'giftgroove_amazon');
+}
+
+async function runSearch(view) {
+  if (!selectedContact) { alert('Please select a contact first.'); return; }
+
+  const minVal = parseInt(document.getElementById(view + '-min').value);
+  const maxVal = parseInt(document.getElementById(view + '-max').value);
+  const budgetLabel = (minVal === 0 && maxVal === 500) ? 'Any budget' : minVal === 0 ? 'Up to $' + maxVal : '$' + minVal + ' \u2013 $' + maxVal;
+
+  document.getElementById(view + '-prompt').style.display = 'none';
+  document.getElementById(view + '-results').style.display = 'none';
+  document.getElementById(view + '-loading').classList.add('visible');
+  startLoadingMessages(selectedContact.first_name, view);
+
+  // Log the search in Supabase
+  await sb.from('gift_searches').insert({
+    user_id: currentUser.id, contact_id: selectedContact.id,
+    budget_min: minVal, budget_max: maxVal, results_count: 8
+  });
+
+  // Check if webhook is configured
+  if (MAKE_WEBHOOK_URL === 'PASTE_YOUR_MAKE_WEBHOOK_URL_HERE') {
+    // Webhook not set up yet — show demo results
+    setTimeout(() => {
+      stopLoadingMessages();
+      document.getElementById(view + '-loading').classList.remove('visible');
+      renderResults(view, getDemoResults(), budgetLabel);
+    }, 2500);
+    return;
+  }
+
+  // Call Make webhook with contact profile
+  try {
+    const payload = {
+      contact_name: selectedContact.first_name + ' ' + (selectedContact.last_name || ''),
+      gender:       selectedContact.gender || '',
+      age_range:    selectedContact.age_range || '',
+      interests:    selectedContact.interests || '',
+      budget_min:   minVal,
+      budget_max:   maxVal,
+      user_id:      currentUser.id,
+      contact_id:   selectedContact.id,
+    };
+
+    const response = await fetch(MAKE_WEBHOOK_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    });
+
+    const gifts = await response.json();
+    stopLoadingMessages();
+    document.getElementById(view + '-loading').classList.remove('visible');
+    renderResults(view, gifts, budgetLabel);
+  } catch (err) {
+    stopLoadingMessages();
+    document.getElementById(view + '-loading').classList.remove('visible');
+    document.getElementById(view + '-prompt').style.display = 'flex';
+    alert('Could not reach the gift search service. Please try again.');
+  }
+}
+
+function getDemoResults() {
+  return [
+    { name:'Kindle Paperwhite', description:'Thinnest Kindle with adjustable warm light, waterproof', price:'$139.99', emoji:'&#128218;', search:'Kindle Paperwhite' },
+    { name:'Osprey Daylite Plus Daypack', description:'Lightweight hiking daypack with laptop sleeve, 20L', price:'$85.00', emoji:'&#127992;', search:'Osprey Daylite Plus Daypack' },
+    { name:'Darn Tough Hiking Socks', description:'Merino wool, moisture-wicking, lifetime guaranteed', price:'$28.95', emoji:'&#129510;', search:'Darn Tough hiking socks' },
+    { name:'Homesick Mountain Air Candle', description:'Pine, cedar and fresh air scent. Burns 60-80 hours', price:'$34.99', emoji:'&#129561;', search:'Homesick Mountain Air candle' },
+    { name:'National Parks Scratch-Off Poster', description:'Scratch off each of the 63 US National Parks visited', price:'$29.95', emoji:'&#128506;', search:'National Parks scratch off poster' },
+    { name:'Black Diamond Spot 400 Headlamp', description:'400-lumen waterproof headlamp for trail use', price:'$49.95', emoji:'&#128294;', search:'Black Diamond Spot 400 headlamp' },
+    { name:'Moment 67mm Variable ND Filter', description:'Essential photography filter for outdoor shooting', price:'$79.99', emoji:'&#128247;', search:'Moment ND filter photography' },
+    { name:'iNaturalist Field Guide', description:'Identify plants, birds and wildlife on the trail', price:'$24.95', emoji:'&#127807;', search:'iNaturalist field guide nature' },
+  ];
+}
+
+function renderResults(view, gifts, budgetLabel) {
+  const name = selectedContact.first_name + (selectedContact.last_name ? ' ' + selectedContact.last_name : '');
+  let html = `
+    <div class="context-banner">
+      <span>Results for <strong>${escHtml(name)}</strong></span>
+      <div class="cb-tags">
+        <span class="cb-tag">${escHtml(budgetLabel)}</span>
+        ${selectedContact.interests ? selectedContact.interests.split(',').slice(0,2).map(i=>`<span class="cb-tag">${escHtml(i.trim())}</span>`).join('') : ''}
+      </div>
+    </div>
+    <div class="results-header"><div class="results-title">${gifts.length} gift ideas found</div><div class="results-meta">Affiliate links &middot; Prices from Amazon</div></div>`;
+
+  if (view === 'desk') {
+    html += '<div class="results-grid">';
+    gifts.forEach((g, i) => {
+      html += `<div class="gift-card">
+        <div class="gift-img">${g.emoji || '&#127873;'}</div>
+        <div class="gift-body">
+          <div class="gift-name">${escHtml(g.name)}</div>
+          <div class="gift-desc">${escHtml(g.description || '')}</div>
+          <div class="gift-price">${escHtml(g.price || '')}</div>
+          <a class="amazon-btn" href="https://www.amazon.com/s?k=${encodeURIComponent(g.search||g.name)}&tag=YOUR-AFFILIATE-TAG" target="giftgroove_amazon" onclick="trackClick('${g.name}')">&#9733; View on Amazon</a>
+          <button class="save-gift-btn" id="save-${i}" onclick="saveGift(${i},'${escHtml(g.name).replace(/'/g,"\\'")}','${escHtml(g.price||'')}','${encodeURIComponent(g.search||g.name)}','${g.emoji||''}')">&#10022; Save this gift</button>
+          <div class="amazon-note">As an Amazon Associate I earn from qualifying purchases</div>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  } else {
+    gifts.forEach((g, i) => {
+      html += `<div class="mob-gift-card">
+        <div class="mob-gift-img">${g.emoji || '&#127873;'}</div>
+        <div class="mob-gift-body">
+          <div class="mob-gift-name">${escHtml(g.name)}</div>
+          <div class="mob-gift-price">${escHtml(g.price || '')}</div>
+          <div class="mob-gift-btns">
+            <a class="mob-amazon-btn" href="https://www.amazon.com/s?k=${encodeURIComponent(g.search||g.name)}&tag=YOUR-AFFILIATE-TAG" target="giftgroove_amazon">Amazon &#8599;</a>
+            <button class="mob-save-btn" onclick="saveGift(${i},'${escHtml(g.name).replace(/'/g,"\\'")}','${escHtml(g.price||'')}','${encodeURIComponent(g.search||g.name)}','${g.emoji||''}')">&#10022; Save</button>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+
+  document.getElementById(view + '-results').innerHTML = html;
+  document.getElementById(view + '-results').style.display = 'block';
+}
+
+async function saveGift(idx, name, price, searchQuery, emoji) {
+  if (!selectedContact || !currentUser) return;
+  const priceNum = parseFloat(price.replace(/[^0-9.]/g, '')) || 0;
+  const url = 'https://www.amazon.com/s?k=' + searchQuery + '&tag=YOUR-AFFILIATE-TAG';
+
+  const { error } = await sb.from('saved_gifts').insert({
+    user_id:      currentUser.id,
+    contact_id:   selectedContact.id,
+    product_name: name,
+    price:        priceNum,
+    amazon_url:   url,
+    product_emoji:emoji,
+    is_purchased: false,
+  });
+
+  const btn = document.getElementById('save-' + idx);
+  if (!error && btn) {
+    btn.textContent = '&#10003; Saved!';
+    btn.classList.add('saved');
+    btn.disabled = true;
+  }
+}
+
+async function trackClick(productName) {
+  // Increment amazon_clicks in the most recent search log
+  // Simple version — just log it
+  console.log('Amazon click:', productName);
+}
+
+function startLoadingMessages(firstName, view) {
+  const el = document.getElementById(view + '-loading-text');
+  let i = 0;
+  function next() {
+    if (!el) return;
+    el.textContent = loadingMessages[i].replace('interests', firstName + "'s interests");
+    i = (i + 1) % loadingMessages.length;
+  }
+  next();
+  msgTimer = setInterval(next, 900);
+}
+
+function stopLoadingMessages() { if (msgTimer) { clearInterval(msgTimer); msgTimer = null; } }
+
+async function handleLogout() { await sb.auth.signOut(); window.location.href = '07_login.html'; }
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function checkViewport() {
+  const mob = window.innerWidth < 768;
+  document.getElementById('desk-app').style.display = mob ? 'none' : 'flex';
+  document.getElementById('mob-app').style.display  = mob ? 'flex' : 'none';
+  document.getElementById('bot-nav').style.display  = mob ? 'flex' : 'none';
+}
+
+checkViewport();
+window.addEventListener('resize', checkViewport);
+boot();
+</script>
+</body>
+</html>

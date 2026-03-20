@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GiftGroove &mdash; Add / Edit Contact</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --white:#FFFFFF; --off-white:#F9F9F7; --gray-50:#F4F4F2; --gray-400:#9E9E96;
+    --gray-600:#6B6B64; --gray-900:#1C1C1A; --red:#C0392B; --red-pale:#FDECEA;
+    --green:#2D6A4F; --green-mid:#3A8B65; --green-pale:#EAF4EF;
+    --gold:#D4941A; --gold-pale:#FEF7E6; --border:#E8E8E4;
+    --sans:Arial,Helvetica,sans-serif; --serif:Georgia,'Times New Roman',serif;
+  }
+  body { background:var(--off-white); color:var(--gray-900); font-family:var(--sans); font-size:14px; line-height:1.5; margin:0; }
+  .gg-icon { width:38px; height:38px; border-radius:10px; flex-shrink:0; background:linear-gradient(135deg,#C0392B 0%,#D4941A 100%); display:flex; align-items:center; justify-content:center; font-family:Arial,sans-serif; font-size:13px; font-weight:bold; color:#fff; letter-spacing:-1px; user-select:none; }
+
+  .desk-app { display:flex; height:100vh; overflow:hidden; }
+  .sidebar { width:210px; min-width:210px; height:100%; background:var(--white); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; overflow-y:auto; }
+  .logo { padding:18px 20px 16px; border-bottom:1px solid var(--border); }
+  .logo-wrap { display:flex; align-items:center; gap:10px; }
+  .logo-name { font-family:var(--sans); font-size:17px; font-weight:bold; color:var(--red); }
+  .logo-tag { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gray-400); margin-top:2px; }
+  .nav { flex:1; padding:16px 0; }
+  .nav-sec { font-size:9px; font-weight:bold; letter-spacing:0.18em; text-transform:uppercase; color:var(--gray-400); padding:0 20px; margin:14px 0 4px; }
+  .nav-item { text-decoration:none; display:flex; align-items:center; gap:10px; padding:10px 20px; font-size:13px; color:var(--gray-600); border-left:3px solid transparent; transition:all 0.15s; }
+  .nav-item:hover { color:var(--gray-900); background:var(--gray-50); }
+  .nav-item.active { color:var(--green); background:var(--green-pale); border-left-color:var(--green); font-weight:bold; }
+  .sid-foot { padding:16px 20px 20px; border-top:1px solid var(--border); }
+  .uchip { display:flex; align-items:center; gap:9px; }
+  .uavatar { width:32px; height:32px; border-radius:50%; background:var(--gold-pale); border:2px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:bold; color:var(--gold); }
+  .uname { font-size:12px; font-weight:bold; }
+  .uplan { font-size:10px; color:var(--gray-400); }
+
+  .main { flex:1; min-width:0; height:100%; overflow-y:auto; display:flex; flex-direction:column; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; border-bottom:1px solid var(--border); background:var(--white); flex-shrink:0; position:sticky; top:0; z-index:10; }
+  .pg-title { font-family:var(--serif); font-size:22px; font-style:italic; color:var(--gray-900); }
+  .back-btn { font-size:13px; color:var(--green); text-decoration:none; font-weight:bold; }
+  .back-btn:hover { text-decoration:underline; }
+  .content { padding:24px 24px 48px; flex:1; max-width:760px; }
+
+  /* Form */
+  .form-section { background:var(--white); border:1px solid var(--border); border-radius:12px; padding:24px; margin-bottom:16px; }
+  .section-title { font-family:var(--serif); font-size:16px; font-style:italic; color:var(--gray-900); margin-bottom:18px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .form-grid.single { grid-template-columns:1fr; }
+  .field { display:flex; flex-direction:column; gap:5px; }
+  .field.full { grid-column:1 / -1; }
+  .field-label { font-size:11px; font-weight:bold; letter-spacing:0.1em; text-transform:uppercase; color:var(--gray-400); }
+  .req { color:var(--red); margin-left:2px; }
+  .f-input, .f-select { padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--gray-50); font-family:var(--sans); font-size:13px; color:var(--gray-900); outline:none; width:100%; transition:border-color 0.15s; }
+  .f-input:focus, .f-select:focus { border-color:var(--green-mid); background:var(--white); }
+  .f-input::placeholder { color:var(--gray-400); }
+  .field-hint { font-size:10px; color:var(--gray-400); margin-top:2px; }
+
+  /* Interests tags */
+  .tags-wrap { display:flex; flex-wrap:wrap; gap:6px; padding:8px; border:1px solid var(--border); border-radius:8px; background:var(--gray-50); min-height:44px; cursor:text; }
+  .tags-wrap:focus-within { border-color:var(--green-mid); background:var(--white); }
+  .tag-item { display:flex; align-items:center; gap:4px; padding:3px 8px; border-radius:12px; background:var(--green-pale); border:1px solid #C8DFD4; color:var(--green); font-size:12px; font-weight:bold; }
+  .tag-remove { background:none; border:none; cursor:pointer; color:var(--green); font-size:14px; line-height:1; padding:0; }
+  .tag-remove:hover { color:var(--red); }
+  .tag-input { border:none; background:transparent; outline:none; font-family:var(--sans); font-size:13px; color:var(--gray-900); min-width:120px; flex:1; }
+
+  /* Occasions */
+  .occ-row { display:grid; grid-template-columns:1fr 160px 120px auto; gap:10px; align-items:end; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+  .occ-row:last-child { border-bottom:none; margin-bottom:0; }
+  .add-occ-btn { display:flex; align-items:center; gap:6px; padding:8px 14px; border:1px dashed var(--green-mid); border-radius:8px; background:transparent; font-family:var(--sans); font-size:12px; font-weight:bold; color:var(--green); cursor:pointer; margin-top:12px; }
+  .add-occ-btn:hover { background:var(--green-pale); }
+  .remove-occ-btn { padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:transparent; font-family:var(--sans); font-size:12px; color:var(--gray-400); cursor:pointer; white-space:nowrap; }
+  .remove-occ-btn:hover { border-color:var(--red); color:var(--red); background:var(--red-pale); }
+
+  /* Reminders */
+  .reminder-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .reminder-label { font-size:13px; color:var(--gray-600); }
+
+  /* Messages */
+  .msg-banner { display:none; align-items:center; gap:10px; padding:11px 14px; border-radius:8px; font-size:12px; margin-bottom:16px; }
+  .msg-banner.visible { display:flex; }
+  .msg-banner.error   { background:var(--red-pale); border:1px solid var(--red); color:var(--red); }
+  .msg-banner.success { background:var(--green-pale); border:1px solid var(--green-mid); color:var(--green); }
+
+  /* Save button */
+  .save-bar { display:flex; align-items:center; gap:12px; padding-top:8px; }
+  .save-btn { padding:12px 32px; background:var(--green); color:#fff; border:none; border-radius:8px; font-family:var(--sans); font-size:14px; font-weight:bold; cursor:pointer; }
+  .save-btn:hover:not(:disabled) { background:var(--green-mid); }
+  .save-btn:disabled { opacity:0.7; cursor:not-allowed; }
+  .cancel-btn { padding:12px 20px; border:1px solid var(--border); border-radius:8px; background:transparent; font-family:var(--sans); font-size:14px; color:var(--gray-600); cursor:pointer; text-decoration:none; }
+  .cancel-btn:hover { border-color:var(--gray-400); }
+  .spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.4); border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite; margin-right:8px; vertical-align:middle; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* Mobile */
+  .mob-header { display:none; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--white); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
+  .mob-gg { display:flex; align-items:center; gap:8px; }
+  .mob-app-name { font-family:var(--sans); font-size:15px; font-weight:bold; color:var(--red); }
+  .mob-pg-title { font-family:var(--serif); font-size:15px; font-style:italic; color:var(--gray-600); }
+  .mob-back { font-size:13px; color:var(--green); text-decoration:none; }
+  .mob-content { padding:16px; }
+</style>
+</head>
+<body>
+
+<!-- DESKTOP -->
+<div class="desk-app" id="desk-app">
+  <aside class="sidebar">
+    <div class="logo"><div class="logo-wrap"><div class="gg-icon">GG</div><div><div class="logo-name">GiftGroove</div><div class="logo-tag">Smart Gift Finder</div></div></div></div>
+    <nav class="nav">
+      <div class="nav-sec">Main</div>
+      <a class="nav-item" href="01_dashboard.html">&#9633; Dashboard</a>
+      <a class="nav-item active" href="02_contacts.html">&#9673; Contacts</a>
+      <a class="nav-item" href="04_gift_ideas.html">&#9733; Gift Ideas</a>
+      <a class="nav-item" href="04b_saved_gifts.html">&#10022; Saved Gifts</a>
+      <div class="nav-sec">Account</div>
+      <a class="nav-item" href="05_settings.html">&#9675; Settings</a>
+    </nav>
+    <div class="sid-foot">
+      <div class="uchip"><div class="uavatar" id="desk-avatar">?</div><div><div class="uname" id="desk-uname">...</div><div class="uplan">Free plan</div></div></div>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div class="pg-title" id="page-title">Add Contact</div>
+      <a class="back-btn" href="02_contacts.html">&#8592; Back to contacts</a>
+    </div>
+    <div class="content">
+      <div id="form-area"></div>
+    </div>
+  </main>
+</div>
+
+<!-- MOBILE header -->
+<div class="mob-header" id="mob-header">
+  <div class="mob-gg"><div class="mob-app-name">GiftGroove</div></div>
+  <div class="mob-pg-title" id="mob-page-title">Add Contact</div>
+  <a class="mob-back" href="02_contacts.html">&#8592; Back</a>
+</div>
+<div class="mob-content" id="mob-content" style="display:none;"></div>
+
+<script>
+const SUPABASE_URL      = 'https://xaglxbzeexlumisozmdb.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhhZ2x4YnplZXhsdW1pc296bWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NzIyNDAsImV4cCI6MjA4OTQ0ODI0MH0.2Umu3Vm3-XTTnOv0_iORow0QUDCTEU2e56lAN_4j0Aw';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let editContactId = null;
+let interests = [];
+let occasionCount = 0;
+
+// ── Boot ──
+async function boot() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = '07_login.html'; return; }
+  currentUser = session.user;
+
+  const name = currentUser.user_metadata?.full_name || currentUser.email || '';
+  document.getElementById('desk-uname').textContent  = name;
+  document.getElementById('desk-avatar').textContent = name.charAt(0).toUpperCase();
+
+  // Check if editing an existing contact
+  const params = new URLSearchParams(window.location.search);
+  editContactId = params.get('id') || null;
+
+  if (editContactId) {
+    document.getElementById('page-title').textContent     = 'Edit Contact';
+    document.getElementById('mob-page-title').textContent = 'Edit Contact';
+    await loadContactForEdit(editContactId);
+  } else {
+    renderForm({});
+  }
+
+  checkViewport();
+}
+
+// ── Load contact data for editing ──
+async function loadContactForEdit(id) {
+  const { data: contact } = await sb.from('contacts').select('*').eq('id', id).single();
+  const { data: occs }    = await sb.from('occasions').select('*').eq('contact_id', id).order('occasion_date');
+  const { data: rems }    = await sb.from('reminders').select('*').in('occasion_id', (occs||[]).map(o=>o.id));
+  renderForm(contact || {}, occs || [], rems || []);
+}
+
+// ── Render form ──
+function renderForm(contact, occs, rems) {
+  interests = contact.interests ? contact.interests.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  const existingOccs = occs || [];
+  const existingRems = rems || [];
+
+  const html = `
+    <div class="msg-banner error" id="form-error"><span>&#10005;</span><span id="form-error-text">Please fix the errors above.</span></div>
+    <div class="msg-banner success" id="form-success"><span>&#10003;</span><span id="form-success-text">Contact saved!</span></div>
+
+    <div class="form-section">
+      <div class="section-title">Personal details</div>
+      <div class="form-grid">
+        <div class="field"><div class="field-label">First name <span class="req">*</span></div><input class="f-input" id="f-first" type="text" value="${esc(contact.first_name||'')}" placeholder="e.g. Eleanor" /></div>
+        <div class="field"><div class="field-label">Last name</div><input class="f-input" id="f-last" type="text" value="${esc(contact.last_name||'')}" placeholder="e.g. Voss" /></div>
+        <div class="field"><div class="field-label">Relationship <span class="req">*</span></div>
+          <select class="f-select" id="f-rel">
+            <option value="">Select...</option>
+            ${['Family','Friend','Partner','Colleague','Other'].map(r=>`<option value="${r}" ${contact.relationship===r?'selected':''}>${r}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><div class="field-label">Category</div><input class="f-input" id="f-cat" type="text" value="${esc(contact.category||'')}" placeholder="e.g. Sister, Best friend" /></div>
+        <div class="field"><div class="field-label">Gender</div>
+          <select class="f-select" id="f-gender">
+            <option value="">Select...</option>
+            ${['Female','Male','Non-binary','Prefer not to say'].map(g=>`<option value="${g}" ${contact.gender===g?'selected':''}>${g}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><div class="field-label">Age range</div>
+          <select class="f-select" id="f-age">
+            <option value="">Select...</option>
+            ${["Under 18","18-25","Late 20s","30s","40s","50s","60s","70+"].map(a=>`<option value="${a}" ${contact.age_range===a?'selected':''}>${a}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="section-title">Interests &amp; hobbies</div>
+      <div class="field">
+        <div class="field-label">Interests</div>
+        <div class="tags-wrap" id="tags-wrap" onclick="document.getElementById('tag-input').focus()">
+          <span id="tags-container"></span>
+          <input class="tag-input" id="tag-input" type="text" placeholder="Type and press Enter or comma..." onkeydown="handleTagKey(event)" />
+        </div>
+        <div class="field-hint">Press Enter or comma to add each interest. These help the AI find better gift ideas.</div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="section-title">Occasions</div>
+      <div id="occasions-list"></div>
+      <button class="add-occ-btn" onclick="addOccasionRow()">+ Add another occasion</button>
+    </div>
+
+    <div class="form-section">
+      <div class="section-title">Reminders</div>
+      <div class="reminder-row">
+        <div class="reminder-label">Send reminder</div>
+        <select class="f-select" id="rem-1" style="width:auto;">
+          ${[7,14,21,30,45,60].map(d=>`<option value="${d}" ${d===14?'selected':''}>  ${d} days before</option>`).join('')}
+        </select>
+        <div class="reminder-label">and</div>
+        <select class="f-select" id="rem-2" style="width:auto;">
+          ${[3,5,7,14,21].map(d=>`<option value="${d}" ${d===7?'selected':''}>${d} days before</option>`).join('')}
+        </select>
+      </div>
+      <div class="field-hint">Two reminders will be sent for each occasion. You can change these per-contact at any time.</div>
+    </div>
+
+    <div class="save-bar">
+      <button class="save-btn" id="save-btn" onclick="saveContact()">
+        ${editContactId ? 'Save changes' : 'Add contact'}
+      </button>
+      <a class="cancel-btn" href="02_contacts.html">Cancel</a>
+    </div>`;
+
+  document.getElementById('form-area').innerHTML = html;
+  document.getElementById('mob-content').innerHTML = html;
+
+  // Render existing interests
+  renderTags();
+
+  // Render existing occasions or default empty row
+  if (existingOccs.length > 0) {
+    existingOccs.forEach(o => addOccasionRow(o));
+  } else {
+    addOccasionRow();
+  }
+}
+
+// ── Tag management ──
+function renderTags() {
+  const container = document.getElementById('tags-container');
+  if (!container) return;
+  container.innerHTML = interests.map((t,i) =>
+    `<span class="tag-item">${esc(t)}<button class="tag-remove" onclick="removeTag(${i})">&#10005;</button></span>`
+  ).join('');
+}
+
+function handleTagKey(e) {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = e.target.value.replace(',','').trim();
+    if (val && !interests.includes(val)) { interests.push(val); renderTags(); }
+    e.target.value = '';
+  }
+  if (e.key === 'Backspace' && !e.target.value && interests.length) {
+    interests.pop(); renderTags();
+  }
+}
+
+function removeTag(i) { interests.splice(i,1); renderTags(); }
+
+// ── Occasion rows ──
+function addOccasionRow(occ) {
+  const idx = occasionCount++;
+  const types = ['Birthday','Anniversary','Christmas','Valentine\'s Day','Mother\'s Day','Father\'s Day','Graduation','Retirement','Wedding','Baby Shower','Thanksgiving','Other'];
+  const selectedType = occ ? occ.occasion_type : 'Birthday';
+  const selectedDate = occ ? occ.occasion_date : '';
+  const recurs = occ ? occ.recurs_annually : true;
+  const customTitle = occ ? (occ.custom_title || '') : '';
+  const occId = occ ? occ.id : null;
+
+  const row = document.createElement('div');
+  row.className = 'occ-row';
+  row.id = `occ-row-${idx}`;
+  row.dataset.occId = occId || '';
+  row.innerHTML = `
+    <div class="field">
+      <div class="field-label">Occasion type</div>
+      <select class="f-select" id="occ-type-${idx}" onchange="onOccTypeChange(${idx})">
+        ${types.map(t=>`<option value="${t}" ${selectedType===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+      <input class="f-input" id="occ-custom-${idx}" type="text" placeholder="Occasion title (e.g. Boss's Day)" value="${esc(customTitle)}" style="margin-top:8px;display:${selectedType==='Other'?'block':'none'};" oninput="lookupHoliday(this.value,${idx})" />
+    </div>
+    <div class="field">
+      <div class="field-label">Date</div>
+      <input class="f-input" id="occ-date-${idx}" type="date" value="${selectedDate}" />
+    </div>
+    <div class="field">
+      <div class="field-label">Recurs yearly</div>
+      <select class="f-select" id="occ-recur-${idx}">
+        <option value="true" ${recurs?'selected':''}>Yes</option>
+        <option value="false" ${!recurs?'selected':''}>No</option>
+      </select>
+    </div>
+    <div><button class="remove-occ-btn" onclick="removeOccasionRow(${idx})">&#10005; Remove</button></div>`;
+
+  const list = document.getElementById('occasions-list');
+  if (list) list.appendChild(row);
+}
+
+function onOccTypeChange(idx) {
+  const type = document.getElementById(`occ-type-${idx}`).value;
+  const custom = document.getElementById(`occ-custom-${idx}`);
+  custom.style.display = type === 'Other' ? 'block' : 'none';
+
+  // Auto-populate date for known occasion types
+  const knownDates = {
+    'Christmas':      nextFixed(12,25),
+    "Valentine's Day":nextFixed(2,14),
+    "Mother's Day":   nextNthWeekday(5,0,2),
+    "Father's Day":   nextNthWeekday(6,0,3),
+    'Thanksgiving':   nextNthWeekday(11,3,4),
+  };
+  if (knownDates[type]) {
+    document.getElementById(`occ-date-${idx}`).value = knownDates[type];
+  }
+}
+
+function removeOccasionRow(idx) {
+  const row = document.getElementById(`occ-row-${idx}`);
+  if (row) row.remove();
+}
+
+// Holiday lookup for "Other" occasion type
+const holidayMap = {
+  'secretary':['administrative professional',nthWeekday(4,2,3)],
+  'administrative professional':[null,nthWeekday(4,2,3)],
+  'boss':      [null,nextFixed(10,16)],
+  'nurses':    [null,nextFixed(5,6)],
+  'teachers':  [null,nthWeekday(5,1,1)],
+  'earth day': [null,nextFixed(4,22)],
+  'veterans':  [null,nextFixed(11,11)],
+  'halloween': [null,nextFixed(10,31)],
+  'labor day': [null,nthWeekday(9,1,0)],
+  'memorial':  [null,lastMondayMay()],
+  'groundhog': [null,nextFixed(2,2)],
+  'cinco de mayo':[null,nextFixed(5,5)],
+};
+
+function lookupHoliday(val, idx) {
+  const input = document.getElementById(`occ-date-${idx}`);
+  if (!input) return;
+  const q = val.toLowerCase().trim();
+  if (!q) return;
+  clearTimeout(window._hlt);
+  window._hlt = setTimeout(() => {
+    for (const key of Object.keys(holidayMap)) {
+      if (q.includes(key) || key.includes(q)) {
+        input.value = holidayMap[key][1];
+        input.style.borderColor = 'var(--green-mid)';
+        setTimeout(() => { input.style.borderColor = ''; }, 2000);
+        return;
+      }
+    }
+  }, 600);
+}
+
+function nextFixed(m, d) {
+  const y = new Date().getFullYear();
+  let dt = new Date(y, m-1, d);
+  if (dt < new Date()) dt = new Date(y+1, m-1, d);
+  return dt.toISOString().slice(0,10);
+}
+function nextNthWeekday(m, dow, nth) { return nthWeekday(m, nth, dow); }
+function nthWeekday(month, nth, dow) {
+  const y = new Date().getFullYear();
+  let d = new Date(y, month-1, 1), count = 0;
+  while (d.getMonth() === month-1) {
+    if (d.getDay() === dow && ++count === nth) break;
+    d.setDate(d.getDate()+1);
+  }
+  if (d < new Date()) return nthWeekday(month, nth, dow); // next year
+  return d.toISOString().slice(0,10);
+}
+function lastMondayMay() {
+  const y = new Date().getFullYear();
+  let d = new Date(y, 5, 0);
+  while (d.getDay() !== 1) d.setDate(d.getDate()-1);
+  if (d < new Date()) { /* next year */ d = new Date(y+1, 5, 0); while (d.getDay()!==1) d.setDate(d.getDate()-1); }
+  return d.toISOString().slice(0,10);
+}
+
+// ── Save contact ──
+async function saveContact() {
+  const firstName = document.getElementById('f-first').value.trim();
+  const lastName  = document.getElementById('f-last').value.trim();
+  const rel       = document.getElementById('f-rel').value;
+  const btn       = document.getElementById('save-btn');
+
+  if (!firstName) { showError('Please enter a first name.'); return; }
+  if (!rel)       { showError('Please select a relationship.'); return; }
+
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner"></span>Saving...';
+  hideMessages();
+
+  const contactData = {
+    user_id:      currentUser.id,
+    first_name:   firstName,
+    last_name:    lastName || null,
+    relationship: rel,
+    category:     document.getElementById('f-cat').value.trim() || null,
+    gender:       document.getElementById('f-gender').value || null,
+    age_range:    document.getElementById('f-age').value || null,
+    interests:    interests.join(', ') || null,
+  };
+
+  let contactId = editContactId;
+
+  if (editContactId) {
+    const { error } = await sb.from('contacts').update(contactData).eq('id', editContactId);
+    if (error) { showError('Could not save contact. Please try again.'); resetBtn(btn); return; }
+  } else {
+    const { data, error } = await sb.from('contacts').insert(contactData).select().single();
+    if (error || !data) { showError('Could not create contact. Please try again.'); resetBtn(btn); return; }
+    contactId = data.id;
+  }
+
+  // Save occasions
+  const occRows = document.querySelectorAll('[id^="occ-row-"]');
+  for (const row of occRows) {
+    const idx      = row.id.replace('occ-row-','');
+    const occId    = row.dataset.occId || null;
+    const occType  = document.getElementById(`occ-type-${idx}`)?.value;
+    const occDate  = document.getElementById(`occ-date-${idx}`)?.value;
+    const recurs   = document.getElementById(`occ-recur-${idx}`)?.value === 'true';
+    const custom   = document.getElementById(`occ-custom-${idx}`)?.value.trim() || null;
+    if (!occDate) continue;
+
+    const occData = { contact_id:contactId, occasion_type:occType, occasion_date:occDate, recurs_annually:recurs, custom_title:custom };
+    if (occId) {
+      await sb.from('occasions').update(occData).eq('id', occId);
+    } else {
+      const { data: newOcc } = await sb.from('occasions').insert(occData).select().single();
+      if (newOcc) {
+        // Save two reminders
+        const rem1 = parseInt(document.getElementById('rem-1')?.value || '14');
+        const rem2 = parseInt(document.getElementById('rem-2')?.value || '7');
+        await sb.from('reminders').insert([
+          { occasion_id:newOcc.id, days_before:rem1, channel:'email' },
+          { occasion_id:newOcc.id, days_before:rem2, channel:'email' },
+        ]);
+      }
+    }
+  }
+
+  showSuccess(editContactId ? 'Contact updated!' : 'Contact added!');
+  setTimeout(() => { window.location.href = '02_contacts.html'; }, 1200);
+}
+
+function resetBtn(btn) {
+  btn.disabled  = false;
+  btn.innerHTML = editContactId ? 'Save changes' : 'Add contact';
+}
+function showError(msg)   { document.getElementById('form-error-text').textContent=msg; document.getElementById('form-error').classList.add('visible'); }
+function showSuccess(msg) { document.getElementById('form-success-text').textContent=msg; document.getElementById('form-success').classList.add('visible'); }
+function hideMessages()   { document.getElementById('form-error').classList.remove('visible'); document.getElementById('form-success').classList.remove('visible'); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function checkViewport() {
+  const mob = window.innerWidth < 768;
+  document.getElementById('desk-app').style.display  = mob ? 'none' : 'flex';
+  document.getElementById('mob-header').style.display = mob ? 'flex' : 'none';
+  document.getElementById('mob-content').style.display = mob ? 'block' : 'none';
+}
+
+checkViewport();
+window.addEventListener('resize', checkViewport);
+boot();
+</script>
+</body>
+</html>

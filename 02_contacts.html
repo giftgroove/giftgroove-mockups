@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GiftGroove &mdash; Contacts</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --white:#FFFFFF; --off-white:#F9F9F7; --gray-50:#F4F4F2; --gray-400:#9E9E96;
+    --gray-600:#6B6B64; --gray-900:#1C1C1A; --red:#C0392B; --red-pale:#FDECEA;
+    --green:#2D6A4F; --green-mid:#3A8B65; --green-pale:#EAF4EF;
+    --gold:#D4941A; --gold-pale:#FEF7E6; --border:#E8E8E4;
+    --sans:Arial,Helvetica,sans-serif; --serif:Georgia,'Times New Roman',serif;
+  }
+  body { background:var(--off-white); color:var(--gray-900); font-family:var(--sans); font-size:14px; line-height:1.5; margin:0; }
+  .gg-icon { width:38px; height:38px; border-radius:10px; flex-shrink:0; background:linear-gradient(135deg,#C0392B 0%,#D4941A 100%); display:flex; align-items:center; justify-content:center; font-family:Arial,sans-serif; font-size:13px; font-weight:bold; color:#fff; letter-spacing:-1px; user-select:none; }
+  .gg-icon-sm { width:30px; height:30px; border-radius:8px; flex-shrink:0; background:linear-gradient(135deg,#C0392B 0%,#D4941A 100%); display:flex; align-items:center; justify-content:center; font-family:Arial,sans-serif; font-size:11px; font-weight:bold; color:#fff; letter-spacing:-1px; user-select:none; }
+
+  /* Layout */
+  .desk-app { display:flex; height:100vh; overflow:hidden; }
+  .sidebar { width:210px; min-width:210px; height:100%; background:var(--white); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; overflow-y:auto; }
+  .logo { padding:18px 20px 16px; border-bottom:1px solid var(--border); }
+  .logo-wrap { display:flex; align-items:center; gap:10px; }
+  .logo-name { font-family:var(--sans); font-size:17px; font-weight:bold; color:var(--red); }
+  .logo-tag { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gray-400); margin-top:2px; }
+  .nav { flex:1; padding:16px 0; }
+  .nav-sec { font-size:9px; font-weight:bold; letter-spacing:0.18em; text-transform:uppercase; color:var(--gray-400); padding:0 20px; margin:14px 0 4px; }
+  .nav-item { text-decoration:none; display:flex; align-items:center; gap:10px; padding:10px 20px; font-size:13px; color:var(--gray-600); border-left:3px solid transparent; transition:all 0.15s; }
+  .nav-item:hover { color:var(--gray-900); background:var(--gray-50); }
+  .nav-item.active { color:var(--green); background:var(--green-pale); border-left-color:var(--green); font-weight:bold; }
+  .nbadge { margin-left:auto; background:var(--red); color:#fff; font-size:10px; font-weight:bold; padding:1px 6px; border-radius:10px; }
+  .sid-foot { padding:16px 20px 20px; border-top:1px solid var(--border); }
+  .uchip { display:flex; align-items:center; gap:9px; }
+  .uavatar { width:32px; height:32px; border-radius:50%; background:var(--gold-pale); border:2px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:bold; color:var(--gold); }
+  .uname { font-size:12px; font-weight:bold; }
+  .uplan { font-size:10px; color:var(--gray-400); }
+  .logout-btn { margin-top:10px; width:100%; padding:7px; border:1px solid var(--border); border-radius:7px; background:transparent; font-family:var(--sans); font-size:11px; color:var(--gray-400); cursor:pointer; }
+  .logout-btn:hover { border-color:var(--red); color:var(--red); background:var(--red-pale); }
+
+  .main { flex:1; min-width:0; height:100%; overflow-y:auto; display:flex; flex-direction:column; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; border-bottom:1px solid var(--border); background:var(--white); flex-shrink:0; position:sticky; top:0; z-index:10; gap:12px; flex-wrap:wrap; }
+  .pg-title { font-family:var(--serif); font-size:22px; font-style:italic; color:var(--gray-900); }
+  .tbar-r { display:flex; align-items:center; gap:8px; }
+  .search-wrap { position:relative; }
+  .search-input { padding:8px 10px 8px 30px; border:1px solid var(--border); border-radius:8px; background:var(--gray-50); font-family:var(--sans); font-size:12px; color:var(--gray-900); outline:none; width:180px; }
+  .search-input:focus { border-color:var(--green-mid); background:var(--white); }
+  .search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:12px; color:var(--gray-400); pointer-events:none; }
+  .add-btn { display:flex; align-items:center; gap:6px; padding:8px 14px; background:var(--green); color:#fff; border:none; border-radius:8px; font-family:var(--sans); font-size:12px; font-weight:bold; cursor:pointer; text-decoration:none; white-space:nowrap; }
+  .add-btn:hover { background:var(--green-mid); }
+  .content { padding:20px 24px 40px; flex:1; }
+
+  /* Filter chips */
+  .list-meta { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
+  .list-count { font-size:13px; color:var(--gray-400); }
+  .filter-chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .chip { padding:4px 11px; border-radius:20px; font-size:11px; font-weight:bold; letter-spacing:0.06em; text-transform:uppercase; cursor:pointer; border:1px solid var(--border); background:var(--white); color:var(--gray-600); transition:all 0.15s; }
+  .chip.active { background:var(--green); color:#fff; border-color:var(--green); }
+  .chip:hover:not(.active) { border-color:var(--green-mid); color:var(--green); }
+
+  /* Contact list */
+  .contact-list { background:var(--white); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+
+  /* Desktop table */
+  .tbl-head { display:grid; grid-template-columns:1fr 150px 180px 90px 120px; align-items:center; padding:10px 20px; background:var(--gray-50); border-bottom:1px solid var(--border); }
+  .th { font-size:10px; font-weight:bold; letter-spacing:0.1em; text-transform:uppercase; color:var(--gray-400); }
+  .c-row { display:grid; grid-template-columns:1fr 150px 180px 90px 120px; align-items:start; padding:12px 20px; border-bottom:1px solid var(--border); cursor:pointer; transition:background 0.12s; }
+  .c-row:last-child { border-bottom:none; }
+  .c-row:hover { background:var(--gray-50); }
+  .name-cell { display:flex; align-items:flex-start; gap:9px; padding-top:2px; }
+  .color-bar { width:4px; height:36px; border-radius:3px; flex-shrink:0; margin-top:2px; }
+  .bar-red{background:var(--red);} .bar-gold{background:var(--gold);} .bar-green{background:var(--green-mid);} .bar-blue{background:#4B5EAA;}
+  .c-name { font-size:13px; font-weight:bold; color:var(--gray-900); }
+  .c-sub  { font-size:11px; color:var(--gray-400); margin-top:2px; }
+  .occ-type { font-size:13px; font-weight:bold; color:var(--gray-900); }
+  .occ-date { font-size:11px; color:var(--gray-400); margin-top:2px; }
+  .interests-cell { display:flex; flex-wrap:wrap; gap:3px; padding-top:2px; }
+  .hobby-tag { display:inline-block; padding:2px 7px; border-radius:10px; background:var(--green-pale); color:var(--green); font-size:10px; font-weight:bold; border:1px solid #C8DFD4; }
+  .days-pill { display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:bold; }
+  .d-urgent{background:var(--red-pale);color:var(--red);}
+  .d-soon{background:var(--gold-pale);color:var(--gold);}
+  .d-later{background:var(--green-pale);color:var(--green);}
+  .d-far{background:var(--gray-50);color:var(--gray-400);border:1px solid var(--border);}
+  .btn-stack { display:flex; flex-direction:column; gap:4px; }
+  .act-btn { display:flex; align-items:center; justify-content:center; gap:4px; width:100%; height:26px; padding:0 8px; border-radius:5px; font-family:var(--sans); font-size:11px; font-weight:bold; cursor:pointer; white-space:nowrap; transition:all 0.15s; }
+  .act-btn.gift { background:var(--gold-pale); color:var(--gold); border:1px solid var(--gold); }
+  .act-btn.gift:hover { background:var(--gold); color:#fff; }
+  .act-btn.edit { background:var(--green-pale); color:var(--green); border:1px solid #C8DFD4; }
+  .act-btn.edit:hover { background:var(--green); color:#fff; }
+  .act-btn.del  { background:var(--gray-50); color:var(--gray-400); border:1px solid var(--border); }
+  .act-btn.del:hover  { background:var(--red-pale); color:var(--red); border-color:var(--red); }
+
+  /* Empty state */
+  .empty-state { padding:48px 24px; text-align:center; }
+  .empty-title { font-family:var(--serif); font-size:20px; font-style:italic; color:var(--gray-600); margin-bottom:8px; }
+  .empty-sub { font-size:13px; color:var(--gray-400); margin-bottom:20px; }
+  .empty-btn { padding:10px 24px; background:var(--green); color:#fff; border:none; border-radius:8px; font-family:var(--sans); font-size:13px; font-weight:bold; cursor:pointer; text-decoration:none; display:inline-block; }
+
+  /* Confirm delete modal */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:200; align-items:center; justify-content:center; }
+  .modal-overlay.visible { display:flex; }
+  .modal { background:var(--white); border-radius:14px; padding:28px; max-width:380px; width:90%; box-shadow:0 8px 40px rgba(0,0,0,0.18); }
+  .modal-title { font-family:var(--serif); font-size:18px; font-style:italic; color:var(--gray-900); margin-bottom:8px; }
+  .modal-sub { font-size:13px; color:var(--gray-600); margin-bottom:20px; line-height:1.5; }
+  .modal-btns { display:flex; gap:10px; }
+  .modal-cancel { flex:1; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--white); font-family:var(--sans); font-size:13px; cursor:pointer; }
+  .modal-delete { flex:1; padding:10px; border:none; border-radius:8px; background:var(--red); color:#fff; font-family:var(--sans); font-size:13px; font-weight:bold; cursor:pointer; }
+
+  /* Mobile */
+  .mob-app { display:none; flex-direction:column; height:100vh; overflow:hidden; }
+  .mob-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--white); border-bottom:1px solid var(--border); flex-shrink:0; }
+  .mob-brand { display:flex; align-items:center; gap:8px; }
+  .mob-app-name { font-family:var(--sans); font-size:15px; font-weight:bold; color:var(--red); }
+  .mob-toolbar { display:flex; align-items:center; gap:8px; padding:10px 14px; background:var(--white); border-bottom:1px solid var(--border); flex-shrink:0; }
+  .mob-search-wrap { position:relative; flex:1; }
+  .mob-search-icon { position:absolute; left:9px; top:50%; transform:translateY(-50%); font-size:11px; color:var(--gray-400); pointer-events:none; }
+  .mob-search-input { width:100%; padding:8px 10px 8px 26px; border:1px solid var(--border); border-radius:8px; background:var(--gray-50); font-family:var(--sans); font-size:12px; color:var(--gray-900); outline:none; }
+  .mob-add-btn { padding:8px 12px; background:var(--green); color:#fff; border:none; border-radius:8px; font-family:var(--sans); font-size:12px; font-weight:bold; cursor:pointer; white-space:nowrap; text-decoration:none; }
+  .mob-chips { display:flex; gap:5px; padding:8px 14px; background:var(--off-white); border-bottom:1px solid var(--border); flex-shrink:0; overflow-x:auto; }
+  .mob-scroll { flex:1; overflow-y:auto; padding:14px 14px 80px; }
+  .mob-card { background:var(--white); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+  .mob-card-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .mob-bar { width:4px; height:38px; border-radius:3px; flex-shrink:0; }
+  .mob-info { flex:1; min-width:0; }
+  .mob-name { font-size:14px; font-weight:bold; color:var(--gray-900); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mob-rel  { font-size:11px; color:var(--gray-400); margin-top:2px; }
+  .mob-occ  { font-size:12px; color:var(--gray-600); padding:8px 0; border-top:1px solid var(--border); margin-bottom:8px; }
+  .mob-hobbies { display:flex; flex-wrap:wrap; gap:4px; padding-bottom:8px; }
+  .mob-hobby-tag { display:inline-block; padding:2px 7px; border-radius:10px; background:var(--green-pale); color:var(--green); font-size:10px; font-weight:bold; border:1px solid #C8DFD4; }
+  .mob-bot { display:flex; gap:6px; }
+  .mob-btn { flex:1; padding:8px 4px; border-radius:7px; border:1px solid var(--border); background:var(--white); font-family:var(--sans); font-size:11px; font-weight:bold; color:var(--gray-600); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; transition:all 0.15s; text-decoration:none; }
+  .mob-btn.gift { background:var(--gold-pale); color:var(--gold); border-color:var(--gold); }
+  .mob-btn.gift:hover { background:var(--gold); color:#fff; }
+  .mob-btn.edit:hover { background:var(--green-pale); color:var(--green); border-color:var(--green-mid); }
+  .mob-btn.del:hover  { background:var(--red-pale); color:var(--red); border-color:var(--red); }
+  .bot-nav { position:fixed; bottom:0; left:0; right:0; height:62px; background:var(--white); border-top:1px solid var(--border); z-index:100; display:none; }
+  .bot-nav-inner { display:flex; height:100%; }
+  .bn-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:var(--gray-400); font-size:10px; border-top:3px solid transparent; text-decoration:none; }
+  .bn-sym { font-size:18px; line-height:1; }
+  .bn-item.active { color:var(--green); border-top-color:var(--green); font-weight:bold; }
+</style>
+</head>
+<body>
+
+<!-- Delete confirmation modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <div class="modal-title">Delete contact?</div>
+    <div class="modal-sub" id="delete-modal-sub">This will permanently delete this contact and all their occasions. This cannot be undone.</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeDeleteModal()">Cancel</button>
+      <button class="modal-delete" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- DESKTOP -->
+<div class="desk-app" id="desk-app">
+  <aside class="sidebar">
+    <div class="logo"><div class="logo-wrap"><div class="gg-icon">GG</div><div><div class="logo-name">GiftGroove</div><div class="logo-tag">Smart Gift Finder</div></div></div></div>
+    <nav class="nav">
+      <div class="nav-sec">Main</div>
+      <a class="nav-item" href="01_dashboard.html">&#9633; Dashboard</a>
+      <a class="nav-item active" href="02_contacts.html">&#9673; Contacts <span class="nbadge" id="desk-badge">0</span></a>
+      <a class="nav-item" href="04_gift_ideas.html">&#9733; Gift Ideas</a>
+      <a class="nav-item" href="04b_saved_gifts.html">&#10022; Saved Gifts</a>
+      <div class="nav-sec">Account</div>
+      <a class="nav-item" href="05_settings.html">&#9675; Settings</a>
+    </nav>
+    <div class="sid-foot">
+      <div class="uchip"><div class="uavatar" id="desk-avatar">?</div><div><div class="uname" id="desk-uname">...</div><div class="uplan">Free plan</div></div></div>
+      <button class="logout-btn" onclick="handleLogout()">Log out</button>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div class="pg-title">Contacts</div>
+      <div class="tbar-r">
+        <div class="search-wrap">
+          <span class="search-icon">&#9906;</span>
+          <input class="search-input" type="text" placeholder="Search contacts..." oninput="filterContacts(this.value)" />
+        </div>
+        <a class="add-btn" href="03_add_edit_contact.html">+ Add Contact</a>
+      </div>
+    </div>
+    <div class="content">
+      <div class="list-meta">
+        <div class="list-count" id="desk-count">Loading...</div>
+        <div class="filter-chips">
+          <div class="chip active" onclick="setFilter('all',this)">ALL</div>
+          <div class="chip" onclick="setFilter('family',this)">FAMILY</div>
+          <div class="chip" onclick="setFilter('friends',this)">FRIENDS</div>
+          <div class="chip" onclick="setFilter('colleague',this)">COLLEAGUE</div>
+          <div class="chip" onclick="setFilter('partner',this)">PARTNER</div>
+        </div>
+      </div>
+      <div class="contact-list" id="desk-contact-list">
+        <div class="tbl-head">
+          <div class="th">Contact</div>
+          <div class="th">Occasion &amp; date</div>
+          <div class="th">Interests</div>
+          <div class="th">Days away</div>
+          <div class="th">Actions</div>
+        </div>
+        <div id="desk-rows"><div class="empty-state"><div class="empty-title">Loading contacts...</div></div></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MOBILE -->
+<div class="mob-app" id="mob-app">
+  <div class="mob-header">
+    <div class="mob-brand"><div class="gg-icon-sm">GG</div><div class="mob-app-name">GiftGroove</div></div>
+    <a class="mob-add-btn" href="03_add_edit_contact.html">+ Add</a>
+  </div>
+  <div class="mob-toolbar">
+    <div class="mob-search-wrap">
+      <span class="mob-search-icon">&#9906;</span>
+      <input class="mob-search-input" type="text" placeholder="Search contacts..." oninput="filterContacts(this.value)" />
+    </div>
+  </div>
+  <div class="mob-chips">
+    <div class="chip active" onclick="setFilter('all',this)">ALL</div>
+    <div class="chip" onclick="setFilter('family',this)">FAMILY</div>
+    <div class="chip" onclick="setFilter('friends',this)">FRIENDS</div>
+    <div class="chip" onclick="setFilter('colleague',this)">COLLEAGUE</div>
+    <div class="chip" onclick="setFilter('partner',this)">PARTNER</div>
+  </div>
+  <div class="mob-scroll">
+    <div id="mob-cards"><div class="empty-state"><div class="empty-title">Loading contacts...</div></div></div>
+  </div>
+  <div class="bot-nav" id="bot-nav">
+    <div class="bot-nav-inner">
+      <a class="bn-item" href="01_dashboard.html"><span class="bn-sym">&#9633;</span>Home</a>
+      <a class="bn-item active" href="02_contacts.html"><span class="bn-sym">&#9673;</span>Contacts</a>
+      <a class="bn-item" href="04_gift_ideas.html"><span class="bn-sym">&#9733;</span>Gifts</a>
+      <a class="bn-item" href="04b_saved_gifts.html"><span class="bn-sym">&#10022;</span>Saved</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL      = 'https://xaglxbzeexlumisozmdb.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhhZ2x4YnplZXhsdW1pc296bWRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NzIyNDAsImV4cCI6MjA4OTQ0ODI0MH0.2Umu3Vm3-XTTnOv0_iORow0QUDCTEU2e56lAN_4j0Aw';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let allContacts = [];
+let allOccasions = [];
+let currentFilter = 'all';
+let deleteTargetId = null;
+
+const barColors = ['bar-red','bar-gold','bar-green','bar-blue'];
+
+async function boot() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = '07_login.html'; return; }
+  const user = session.user;
+  const name = user.user_metadata?.full_name || user.email || '';
+  const firstName = name.split(' ')[0];
+  document.getElementById('desk-uname').textContent  = name;
+  document.getElementById('desk-avatar').textContent = firstName.charAt(0).toUpperCase();
+  await loadData(user.id);
+}
+
+async function loadData(userId) {
+  // Load contacts
+  const { data: contacts } = await sb.from('contacts').select('*').eq('user_id', userId).order('first_name');
+  allContacts = contacts || [];
+
+  // Load all occasions for these contacts
+  if (allContacts.length > 0) {
+    const ids = allContacts.map(c => c.id);
+    const { data: occs } = await sb.from('occasions').select('*').in('contact_id', ids).order('occasion_date');
+    allOccasions = occs || [];
+  }
+
+  document.getElementById('desk-badge').textContent = allContacts.length;
+  renderAll();
+}
+
+function getNextOccasion(contactId) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const upcoming = allOccasions
+    .filter(o => o.contact_id === contactId && new Date(o.occasion_date + 'T00:00:00') >= today)
+    .sort((a,b) => new Date(a.occasion_date) - new Date(b.occasion_date));
+  return upcoming[0] || null;
+}
+
+function daysAway(dateStr) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dateStr + 'T00:00:00');
+  return Math.round((d - today) / 86400000);
+}
+
+function urgencyClass(days) {
+  if (days <= 7)  return 'd-urgent';
+  if (days <= 21) return 'd-soon';
+  if (days <= 60) return 'd-later';
+  return 'd-far';
+}
+
+function daysLabel(days) {
+  if (days === 0) return 'Today!';
+  if (days === 1) return 'Tomorrow';
+  return days + ' days';
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+function interestTags(interests, mobile) {
+  if (!interests) return '';
+  const list = interests.split(',').map(s => s.trim()).filter(Boolean);
+  const cls = mobile ? 'mob-hobby-tag' : 'hobby-tag';
+  return list.map(i => `<span class="${cls}">${escHtml(i)}</span>`).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function getFilteredContacts(searchVal) {
+  let list = allContacts;
+  if (currentFilter !== 'all') {
+    list = list.filter(c => (c.category || '').toLowerCase().includes(currentFilter) ||
+                             (c.relationship || '').toLowerCase().includes(currentFilter));
+  }
+  if (searchVal) {
+    const q = searchVal.toLowerCase();
+    list = list.filter(c => (c.first_name + ' ' + c.last_name).toLowerCase().includes(q) ||
+                             (c.relationship || '').toLowerCase().includes(q));
+  }
+  return list;
+}
+
+function renderAll(searchVal) {
+  const filtered = getFilteredContacts(searchVal || '');
+  const count = filtered.length;
+  document.getElementById('desk-count').textContent = count + ' contact' + (count !== 1 ? 's' : '');
+
+  if (count === 0) {
+    const empty = `<div class="empty-state">
+      <div class="empty-title">No contacts yet</div>
+      <div class="empty-sub">Add your first contact to start tracking occasions and finding gifts.</div>
+      <a class="empty-btn" href="03_add_edit_contact.html">+ Add your first contact</a>
+    </div>`;
+    document.getElementById('desk-rows').innerHTML = empty;
+    document.getElementById('mob-cards').innerHTML = empty;
+    return;
+  }
+
+  let deskHTML = '';
+  let mobHTML  = '';
+
+  filtered.forEach((c, i) => {
+    const fullName  = escHtml(c.first_name + (c.last_name ? ' ' + c.last_name : ''));
+    const relSub    = escHtml((c.relationship || '') + (c.category ? ' \u00b7 ' + c.category : ''));
+    const barCls    = barColors[i % 4];
+    const occ       = getNextOccasion(c.id);
+    const occLabel  = occ ? escHtml(occ.occasion_type === 'Other' ? (occ.custom_title || 'Other') : occ.occasion_type) : '—';
+    const occDate   = occ ? formatDate(occ.occasion_date) : '';
+    const days      = occ ? daysAway(occ.occasion_date) : null;
+    const daysCls   = days !== null ? urgencyClass(days) : 'd-far';
+    const dLabel    = days !== null ? daysLabel(days) : '—';
+    const tags      = interestTags(c.interests, false);
+    const mobTags   = interestTags(c.interests, true);
+    const giftUrl   = `04_gift_ideas.html?contact=${c.id}`;
+    const editUrl   = `03_add_edit_contact.html?id=${c.id}`;
+
+    deskHTML += `
+      <div class="c-row" data-category="${escHtml((c.category||'') + ' ' + (c.relationship||''))}">
+        <div class="name-cell"><div class="color-bar ${barCls}"></div><div><div class="c-name">${fullName}</div><div class="c-sub">${relSub}</div></div></div>
+        <div><div class="occ-type">${occLabel}</div><div class="occ-date">${occDate}</div></div>
+        <div class="interests-cell">${tags || '<span style="color:var(--gray-400);font-size:11px;">—</span>'}</div>
+        <div><span class="days-pill ${daysCls}">${dLabel}</span></div>
+        <div class="btn-stack">
+          <a class="act-btn gift" href="${giftUrl}">&#9733; Find Gift</a>
+          <a class="act-btn edit" href="${editUrl}">&#9998; Edit</a>
+          <button class="act-btn del" onclick="openDeleteModal('${c.id}','${fullName}')">&#10005; Delete</button>
+        </div>
+      </div>`;
+
+    mobHTML += `
+      <div class="mob-card">
+        <div class="mob-card-top">
+          <div class="mob-bar ${barCls}"></div>
+          <div class="mob-info"><div class="mob-name">${fullName}</div><div class="mob-rel">${relSub}</div></div>
+          <span class="days-pill ${daysCls}">${dLabel}</span>
+        </div>
+        <div class="mob-occ">${occLabel}${occDate ? ' &middot; ' + occDate : ''}</div>
+        ${mobTags ? `<div class="mob-hobbies">${mobTags}</div>` : ''}
+        <div class="mob-bot">
+          <a class="mob-btn gift" href="${giftUrl}">&#9733; Gift</a>
+          <a class="mob-btn edit" href="${editUrl}">&#9998; Edit</a>
+          <button class="mob-btn del" onclick="openDeleteModal('${c.id}','${fullName}')">&#10005; Delete</button>
+        </div>
+      </div>`;
+  });
+
+  document.getElementById('desk-rows').innerHTML = deskHTML;
+  document.getElementById('mob-cards').innerHTML = mobHTML;
+}
+
+function filterContacts(val) { renderAll(val); }
+
+function setFilter(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.chip').forEach(c => { if(c.textContent.toLowerCase() === filter || (filter==='all' && c.textContent==='ALL')) c.classList.add('active'); });
+  el.classList.add('active');
+  renderAll();
+}
+
+function openDeleteModal(id, name) {
+  deleteTargetId = id;
+  document.getElementById('delete-modal-sub').textContent = 'This will permanently delete ' + name + ' and all their occasions. This cannot be undone.';
+  document.getElementById('delete-modal').classList.add('visible');
+}
+
+function closeDeleteModal() {
+  deleteTargetId = null;
+  document.getElementById('delete-modal').classList.remove('visible');
+}
+
+async function confirmDelete() {
+  if (!deleteTargetId) return;
+  // Delete occasions first (foreign key), then contact
+  await sb.from('occasions').delete().eq('contact_id', deleteTargetId);
+  await sb.from('contacts').delete().eq('id', deleteTargetId);
+  closeDeleteModal();
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) await loadData(session.user.id);
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  window.location.href = '07_login.html';
+}
+
+function checkViewport() {
+  const mob = window.innerWidth < 768;
+  document.getElementById('desk-app').style.display = mob ? 'none' : 'flex';
+  document.getElementById('mob-app').style.display  = mob ? 'flex' : 'none';
+  document.getElementById('bot-nav').style.display  = mob ? 'flex' : 'none';
+}
+
+checkViewport();
+window.addEventListener('resize', checkViewport);
+boot();
+</script>
+</body>
+</html>
