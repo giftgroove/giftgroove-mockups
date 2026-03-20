@@ -136,7 +136,7 @@
   <div class="mob-pg-title" id="mob-page-title">Add Contact</div>
   <a class="mob-back" href="02_contacts.html">&#8592; Back</a>
 </div>
-<div class="mob-content" id="mob-content" style="display:none;"></div>
+<!-- Mobile uses form-area directly -->
 
 <script>
 const SUPABASE_URL      = 'https://xaglxbzeexlumisozmdb.supabase.co';
@@ -260,7 +260,7 @@ function renderForm(contact, occs, rems) {
     </div>`;
 
   document.getElementById('form-area').innerHTML = html;
-  document.getElementById('mob-content').innerHTML = html;
+  // Mobile uses the same form-area element - no duplicate needed
 
   // Render existing interests
   renderTags();
@@ -454,7 +454,8 @@ async function saveContact() {
   }
 
   // Save occasions
-  const occRows = document.querySelectorAll('[id^="occ-row-"]');
+  const formArea = document.getElementById('form-area') || document;
+  const occRows = formArea.querySelectorAll('[id^="occ-row-"]');
   for (const row of occRows) {
     const idx      = row.id.replace('occ-row-','');
     const occId    = row.dataset.occId || null;
@@ -498,7 +499,12 @@ function checkViewport() {
   const mob = window.innerWidth < 768;
   document.getElementById('desk-app').style.display  = mob ? 'none' : 'flex';
   document.getElementById('mob-header').style.display = mob ? 'flex' : 'none';
-  document.getElementById('mob-content').style.display = mob ? 'block' : 'none';
+  // On mobile, form-area is shown directly below mob-header
+  const formArea = document.getElementById('form-area');
+  if (formArea) {
+    formArea.style.padding = mob ? '16px' : '';
+    formArea.style.display = 'block';
+  }
 }
 
 checkViewport();
