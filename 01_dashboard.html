@@ -434,13 +434,28 @@ async function loadOccasions(userId) {
   }
 
   // Get all upcoming occasions for this user's contacts
-  const { data: occasions, error: occErr } = await sb
+  let { data: occasions, error: occErr } = await sb
     .from('occasions')
     .select('id, contact_id, occasion_type, custom_title, occasion_date')
     .in('contact_id', contactIds)
-    .gte('occasion_date', todayStr)
     .order('occasion_date', { ascending: true })
     .limit(10);
+
+  // Filter out non-recurring occasions that have already passed
+  // For recurring ones, nextOccurrence() will advance to next year
+  if (occasions) {
+    occasions = occasions.filter(o => {
+      const next = nextOccurrence(o.occasion_date, o.recurs_annually);
+      const daysAway = Math.round((next - today) / (1000 * 60 * 60 * 24));
+      return o.recurs_annually || daysAway >= 0;
+    });
+    // Sort by next occurrence date
+    occasions.sort((a, b) => {
+      const na = nextOccurrence(a.occasion_date, a.recurs_annually);
+      const nb = nextOccurrence(b.occasion_date, b.recurs_annually);
+      return na - nb;
+    });
+  }
 
   if (occErr || !occasions || occasions.length === 0) {
     showEmptyOccasions('No upcoming occasions. Add occasions to your contacts to see them here.');
@@ -454,8 +469,8 @@ async function loadOccasions(userId) {
   const thisMonth = today.getMonth();
   const thisYear  = today.getFullYear();
   const monthCount = occasions.filter(o => {
-    const d = new Date(o.occasion_date);
-    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+    const next = nextOccurrence(o.occasion_date, o.recurs_annually);
+    return next.getMonth() === thisMonth && next.getFullYear() === thisYear;
   }).length;
 
   document.getElementById('desk-stat-occasions').textContent = monthCount;
@@ -474,6 +489,37 @@ async function loadOccasions(userId) {
   updateBannerWithOccasions(occasions, contactMap, today);
 }
 
+
+// ─────────────────────────────────────────────────────────
+// NEXT OCCURRENCE: finds the next upcoming date for an occasion
+// For recurring occasions (birthdays etc.), if the date has
+// already passed this year, returns next year's occurrence.
+// Preserves the original month and day, advances the year.
+// ─────────────────────────────────────────────────────────
+function nextOccurrence(dateStr, recurs) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const raw = new Date(dateStr + 'T00:00:00');
+  const month = raw.getMonth();  // 0-11
+  const day   = raw.getDate();
+
+  // Try this year first
+  let candidate = new Date(today.getFullYear(), month, day);
+
+  if (candidate >= today) {
+    return candidate; // this year's occurrence is still upcoming
+  }
+
+  if (recurs) {
+    // Recurring: return next year's occurrence
+    return new Date(today.getFullYear() + 1, month, day);
+  }
+
+  // Non-recurring and already passed: return the original date
+  // (will show as past/negative days, filtered out by caller)
+  return candidate;
+}
+
 // ─────────────────────────────────────────────────────────
 // RENDER OCCASION ROWS
 // ─────────────────────────────────────────────────────────
@@ -486,7 +532,7 @@ function renderOccasions(occasions, contactMap, today) {
   occasions.slice(0, 8).forEach(occ => {
     const name      = contactMap[occ.contact_id] || 'Unknown';
     const occType   = occ.occasion_type === 'Other' ? (occ.custom_title || 'Other') : occ.occasion_type;
-    const occDate   = new Date(occ.occasion_date + 'T00:00:00'); // force local time
+    const occDate   = nextOccurrence(occ.occasion_date, occ.recurs_annually);
     const daysAway  = Math.round((occDate - today) / (1000 * 60 * 60 * 24));
     const dateStr   = occDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const urgency   = daysAway <= 7 ? 'urgent' : daysAway <= 21 ? 'soon' : daysAway <= 60 ? 'later' : 'far';

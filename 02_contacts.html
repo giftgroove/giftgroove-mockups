@@ -281,17 +281,52 @@ async function loadData(userId) {
   renderAll();
 }
 
+
+// ─────────────────────────────────────────────────────────
+// NEXT OCCURRENCE: finds the next upcoming date for an occasion
+// For recurring occasions (birthdays etc.), if the date has
+// already passed this year, returns next year's occurrence.
+// Preserves the original month and day, advances the year.
+// ─────────────────────────────────────────────────────────
+function nextOccurrence(dateStr, recurs) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const raw = new Date(dateStr + 'T00:00:00');
+  const month = raw.getMonth();  // 0-11
+  const day   = raw.getDate();
+
+  // Try this year first
+  let candidate = new Date(today.getFullYear(), month, day);
+
+  if (candidate >= today) {
+    return candidate; // this year's occurrence is still upcoming
+  }
+
+  if (recurs) {
+    // Recurring: return next year's occurrence
+    return new Date(today.getFullYear() + 1, month, day);
+  }
+
+  // Non-recurring and already passed: return the original date
+  // (will show as past/negative days, filtered out by caller)
+  return candidate;
+}
+
 function getNextOccasion(contactId) {
   const today = new Date(); today.setHours(0,0,0,0);
   const upcoming = allOccasions
-    .filter(o => o.contact_id === contactId && new Date(o.occasion_date + 'T00:00:00') >= today)
-    .sort((a,b) => new Date(a.occasion_date) - new Date(b.occasion_date));
+    .filter(o => {
+      if (o.contact_id !== contactId) return false;
+      const next = nextOccurrence(o.occasion_date, o.recurs_annually);
+      return o.recurs_annually || next >= today;
+    })
+    .sort((a,b) => nextOccurrence(a.occasion_date, a.recurs_annually) - nextOccurrence(b.occasion_date, b.recurs_annually));
   return upcoming[0] || null;
 }
 
-function daysAway(dateStr) {
+function daysAway(dateStr, recurs) {
   const today = new Date(); today.setHours(0,0,0,0);
-  const d = new Date(dateStr + 'T00:00:00');
+  const d = nextOccurrence(dateStr, recurs);
   return Math.round((d - today) / 86400000);
 }
 
@@ -308,9 +343,12 @@ function daysLabel(days) {
   return days + ' days';
 }
 
-function formatDate(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+function formatDate(dateStr, recurs) {
+  // For recurring occasions show the next occurrence date, not the stored year
+  const d = recurs ? nextOccurrence(dateStr, true) : new Date(dateStr + 'T00:00:00');
+  return recurs
+    ? d.toLocaleDateString('en-US', { month:'short', day:'numeric' })
+    : d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 }
 
 function interestTags(interests, mobile) {
@@ -362,11 +400,11 @@ function renderAll(searchVal) {
     const relSub    = escHtml((c.relationship || '') + (c.category ? ' \u00b7 ' + c.category : ''));
     const barCls    = barColors[i % 4];
     const occ       = getNextOccasion(c.id);
-    const occLabel  = occ ? escHtml(occ.occasion_type === 'Other' ? (occ.custom_title || 'Other') : occ.occasion_type) : '—';
-    const occDate   = occ ? formatDate(occ.occasion_date) : '';
-    const days      = occ ? daysAway(occ.occasion_date) : null;
+    const occLabel  = occ ? escHtml(occ.occasion_type === 'Other' ? (occ.custom_title || 'Other') : occ.occasion_type) : null;
+    const occDate   = occ ? formatDate(occ.occasion_date, occ.recurs_annually) : '';
+    const days      = occ ? daysAway(occ.occasion_date, occ.recurs_annually) : null;
     const daysCls   = days !== null ? urgencyClass(days) : 'd-far';
-    const dLabel    = days !== null ? daysLabel(days) : '—';
+    const dLabel    = days !== null ? daysLabel(days) : '';
     const tags      = interestTags(c.interests, false);
     const mobTags   = interestTags(c.interests, true);
     const giftUrl   = `04_gift_ideas.html?contact=${c.id}`;
@@ -375,9 +413,9 @@ function renderAll(searchVal) {
     deskHTML += `
       <div class="c-row" data-category="${escHtml((c.category||'') + ' ' + (c.relationship||''))}">
         <div class="name-cell"><div class="color-bar ${barCls}"></div><div><div class="c-name">${fullName}</div><div class="c-sub">${relSub}</div></div></div>
-        <div><div class="occ-type">${occLabel}</div><div class="occ-date">${occDate}</div></div>
+        <div>${occLabel ? `<div class="occ-type">${occLabel}</div><div class="occ-date">${occDate}</div>` : `<a href="03_add_edit_contact.html?id=${c.id}" style="font-size:11px;color:var(--green);text-decoration:none;font-weight:bold;">+ Add occasion</a>`}</div>
         <div class="interests-cell">${tags || '<span style="color:var(--gray-400);font-size:11px;">—</span>'}</div>
-        <div><span class="days-pill ${daysCls}">${dLabel}</span></div>
+        <div>${dLabel ? `<span class="days-pill ${daysCls}">${dLabel}</span>` : ""}</div>
         <div class="btn-stack">
           <a class="act-btn gift" href="${giftUrl}">&#9733; Find Gift</a>
           <a class="act-btn edit" href="${editUrl}">&#9998; Edit</a>
@@ -392,7 +430,7 @@ function renderAll(searchVal) {
           <div class="mob-info"><div class="mob-name">${fullName}</div><div class="mob-rel">${relSub}</div></div>
           <span class="days-pill ${daysCls}">${dLabel}</span>
         </div>
-        <div class="mob-occ">${occLabel}${occDate ? ' &middot; ' + occDate : ''}</div>
+        <div class="mob-occ">${occLabel ? occLabel + (occDate ? " &middot; " + occDate : "") : '<a href="03_add_edit_contact.html?id=' + c.id + '" style="color:var(--green);font-size:11px;font-weight:bold;text-decoration:none;">+ Add occasion</a>'}</div>
         ${mobTags ? `<div class="mob-hobbies">${mobTags}</div>` : ''}
         <div class="mob-bot">
           <a class="mob-btn gift" href="${giftUrl}">&#9733; Gift</a>
