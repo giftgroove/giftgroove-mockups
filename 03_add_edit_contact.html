@@ -454,30 +454,55 @@ async function saveContact() {
   }
 
   // Save occasions
-  const formArea = document.getElementById('form-area') || document;
-  const occRows = formArea.querySelectorAll('[id^="occ-row-"]');
-  for (const row of occRows) {
-    const idx      = row.id.replace('occ-row-','');
-    const occId    = row.dataset.occId || null;
-    const occType  = document.getElementById(`occ-type-${idx}`)?.value;
-    const occDate  = document.getElementById(`occ-date-${idx}`)?.value;
-    const recurs   = document.getElementById(`occ-recur-${idx}`)?.value === 'true';
-    const custom   = document.getElementById(`occ-custom-${idx}`)?.value.trim() || null;
-    if (!occDate) continue;
+  const occRows = document.querySelectorAll('[id^="occ-row-"]');
+  console.log('Occasion rows found:', occRows.length, 'contactId:', contactId);
 
-    const occData = { contact_id:contactId, occasion_type:occType, occasion_date:occDate, recurs_annually:recurs, custom_title:custom };
+  for (const row of occRows) {
+    const idx     = row.id.replace('occ-row-','');
+    const occId   = row.dataset.occId || null;
+    const typeEl  = row.querySelector(`#occ-type-${idx}`);
+    const dateEl  = row.querySelector(`#occ-date-${idx}`);
+    const recurEl = row.querySelector(`#occ-recur-${idx}`);
+    const custEl  = row.querySelector(`#occ-custom-${idx}`);
+
+    const occType = typeEl ? typeEl.value : 'Birthday';
+    const occDate = dateEl ? dateEl.value : '';
+    const recurs  = recurEl ? recurEl.value === 'true' : true;
+    const custom  = custEl  ? custEl.value.trim() || null : null;
+
+    console.log('Row', idx, '-> type:', occType, 'date:', occDate);
+
+    if (!occDate) {
+      console.log('Row', idx, 'skipped - no date');
+      continue;
+    }
+
+    const occData = {
+      contact_id:    contactId,
+      occasion_type: occType,
+      occasion_date: occDate,
+      recurs_annually: recurs,
+      custom_title:  custom
+    };
+
+    console.log('Saving occasion:', occData);
+
     if (occId) {
-      await sb.from('occasions').update(occData).eq('id', occId);
+      const { error: updErr } = await sb.from('occasions').update(occData).eq('id', occId);
+      if (updErr) { console.error('Occasion update error:', updErr); showError('Could not update occasion: ' + updErr.message); resetBtn(btn); return; }
     } else {
-      const { data: newOcc } = await sb.from('occasions').insert(occData).select().single();
+      const { data: newOcc, error: insErr } = await sb.from('occasions').insert(occData).select().single();
+      console.log('Occasion insert result:', newOcc, insErr);
+      if (insErr) { showError('Could not save occasion: ' + insErr.message); resetBtn(btn); return; }
       if (newOcc) {
-        // Save two reminders
         const rem1 = parseInt(document.getElementById('rem-1')?.value || '14');
         const rem2 = parseInt(document.getElementById('rem-2')?.value || '7');
-        await sb.from('reminders').insert([
-          { occasion_id:newOcc.id, days_before:rem1, channel:'email' },
-          { occasion_id:newOcc.id, days_before:rem2, channel:'email' },
+        const { error: remErr } = await sb.from('reminders').insert([
+          { occasion_id: newOcc.id, days_before: rem1, channel: 'email' },
+          { occasion_id: newOcc.id, days_before: rem2, channel: 'email' },
         ]);
+        if (remErr) console.error('Reminder error:', remErr);
+        else console.log('Reminders saved for occasion', newOcc.id);
       }
     }
   }
